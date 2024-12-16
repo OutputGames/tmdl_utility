@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "tmdl_utility": {
+      "commandName": "Project",
+      "commandLineArgs": "Single \"test/Survival_BackPack_2.fbx\" \"out/\"",
+      "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
+    }
+  }
+}
