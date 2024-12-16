@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace tmdl_utility
 {
-    internal class UtilityInitInfo
+    public class UtilityInitInfo
     {
         public enum ExportType
         {

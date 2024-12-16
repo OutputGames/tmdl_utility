@@ -12,10 +12,22 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="test\" />
+    <Reference Include="BfresLibrary">
+      <HintPath>..\..\GithubRepos\BfresL\BfresLibrary\bin\Release\net48\BfresLibrary.dll</HintPath>
+    </Reference>
+    <Reference Include="Syroot.BinaryData">
+      <HintPath>..\..\GithubRepos\BfresL\BfresLibrary\bin\Release\net48\Syroot.BinaryData.dll</HintPath>
+    </Reference>
+    <Reference Include="Syroot.Maths">
+      <HintPath>..\..\GithubRepos\BfresL\BfresLibrary\bin\Release\net48\Syroot.Maths.dll</HintPath>
+    </Reference>
+    <Reference Include="Syroot.NintenTools.NSW.Bntx">
+      <HintPath>..\..\GithubRepos\BfresL\BfresLibrary\bin\Release\net48\Syroot.NintenTools.NSW.Bntx.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
