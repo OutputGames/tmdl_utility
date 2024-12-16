@@ -74,7 +74,7 @@ namespace tmdl_utility
                         foreach (var mesh in Meshes)
                         {
                             writer.WriteString("TMSH");
-                            writer.Write(mesh.Vertices.Length);
+                            writer.Write((uint)mesh.Vertices.Length);
 
                             writer.WriteString("TVTX");
                             foreach (var meshVertex in mesh.Vertices)
