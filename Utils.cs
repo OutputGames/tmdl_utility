@@ -12,7 +12,7 @@ public static class Utils
 
         ModelUtility.Vec3[] v = new ModelUtility.Vec3[a.Length];
 
-        for (var i = start; i < start+count; i++)
+        for (var i = 0; i < a.Length; i++)
         {
             v[i] = a[i].ToVec3();
         }
@@ -29,7 +29,7 @@ public static class Utils
 
         ModelUtility.Vec2[] v = new ModelUtility.Vec2[a.Length];
 
-        for (var i = start; i < start+count; i++)
+        for (var i = 0; i < a.Length; i++)
         {
             v[i] = a[i].ToVec2();
         }
