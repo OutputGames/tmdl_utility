@@ -119,6 +119,12 @@ namespace tmdl_utility
                 Y = y;
                 Z = z;
             }
+
+            public void Write(ModelWriter writer) {
+                writer.Write(X);
+                writer.Write(Y);
+                writer.Write(Z);
+            }
         }
 
         public class Vec2
@@ -317,7 +323,77 @@ namespace tmdl_utility
                     return ms.ToArray();
                 }
             }
-         }
+        }
+
+        public class Node {
+            public string name;
+            public Vec3 Position;
+            public Vec3 Rotation;
+            public Vec3 Scale;
+
+            public List<int> Meshes;
+
+            public List<Node> children;
+
+            public void Write(ModelWriter writer) {
+                writer.WriteNonSigString(name);
+
+                Position.Write(writer);
+                Rotation.Write(writer);
+                Scale.Write(writer);
+
+                foreach (var idx in Meshes)
+                {
+                    writer.Write(idx);
+                }
+
+                writer.Write(children.Count);
+                foreach (var child in children)
+                {
+                    child.Write(writer);
+                }
+            }
+
+            public Node AddNode(string name) {
+                var node = new Node();
+
+                node.name = name;
+
+                children.add(node);
+
+                return node;
+            }
+        }
+
+        public class Scene {
+            public string name;
+
+            Node rootNode;
+
+            public void Write(ModelWriter writer) {
+
+                writer.WriteNonSigString(name);
+                
+                rootNode.Write(writer);
+
+            }
+
+        }
+
+        public Node ProcessAiNode(Assimp.Node ai) {
+            var node = new Node();
+
+            node.name = ai.Name;
+
+            node.meshes = ai.MeshIndices;
+
+            foreach (var child in ai.children)
+            {
+                node.children.Add(ProcessAiNode(child));
+            }
+
+            return node;
+        }
 
         public Vec4[] ReadVertexBuffer(VertexBuffer vtx, string name, ByteOrder order)
         {
@@ -612,6 +688,14 @@ namespace tmdl_utility
 
                     Directory.CreateDirectory(info.Dest);
 
+                    var mscene = new Scene();
+
+                    mscene.name = scene.Name;
+
+                    mscene.rootNode = ProcessAiNode(scene.rootNode);
+
+                    var armatureNode = mscene.rootNode.AddNode("Armature")
+;
                     var model = new Model();
                     model.Meshes = new Mesh[scene.MeshCount];
 
