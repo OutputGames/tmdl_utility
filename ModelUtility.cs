@@ -335,6 +335,18 @@ namespace tmdl_utility
 
             public List<Node> children;
 
+            public Bone GetBone() {
+                var bone = new Bone();
+                bone.name = name;
+
+                foreach (var child in children)
+                {
+                    bone.children.Add(child.GetBone());
+                }
+
+                return bone;
+            }
+
             public void Write(ModelWriter writer) {
                 writer.WriteNonSigString(name);
 
@@ -352,6 +364,27 @@ namespace tmdl_utility
                 {
                     child.Write(writer);
                 }
+            }
+
+            public Node GetChild(string name) {
+                foreach (var child in children)
+                {
+                    if (child.name == name)
+                        return child;
+                }
+                return null
+            }
+
+            public List<Node> GetAllChildren() {
+                var c = new List<Node>();
+
+                c.AddRange(children);
+                foreach (var child in children)
+                {
+                    c.AddRange(child.GetAllChildren());
+                }
+
+                return c;
             }
 
             public Node AddNode(string name) {
@@ -380,7 +413,8 @@ namespace tmdl_utility
 
         }
 
-        public Node ProcessAiNode(Assimp.Node ai) {
+        public Node ProcessAiNode(Assimp.Node ai, bool isBone = false) {
+
             var node = new Node();
 
             node.name = ai.Name;
@@ -389,7 +423,11 @@ namespace tmdl_utility
 
             foreach (var child in ai.children)
             {
-                node.children.Add(ProcessAiNode(child));
+                var ib = isBone;
+                if (ai.Name == "Armature")
+                    ib = true;
+
+                node.children.Add(ProcessAiNode(child, ib));
             }
 
             return node;
@@ -695,6 +733,8 @@ namespace tmdl_utility
                     mscene.rootNode = ProcessAiNode(scene.rootNode);
 
                     var armatureNode = mscene.rootNode.AddNode("Armature")
+
+                    var boneDict = new Dictionary<string, Assimp.Bone>();
 ;
                     var model = new Model();
                     model.Meshes = new Mesh[scene.MeshCount];
@@ -766,9 +806,18 @@ namespace tmdl_utility
                             }
                         }
 
+                        foreach (var bone in sceneMesh.bones)
+                        {
+                            if (!boneDict.ContainsKey(bone.Name)) {
+                                boneDict.Add(bone.Name, Bone);
+                            }
+                        }
+
                         mesh.MaterialIndex = sceneMesh.MaterialIndex;
 
                         model.Meshes[scene.Meshes.IndexOf(sceneMesh)] = mesh;
+
+                        
                     }
 
                     model.Textures = new Texture[scene.TextureCount];
