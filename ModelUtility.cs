@@ -251,10 +251,10 @@ namespace tmdl_utility
             public Node node;
             public int id = -1;
 
-            public List<Bone> children;
-
             public void Write(ModelWriter writer) {
                 writer.WriteNonSigString(name);
+
+                writer.Write(id);
 
                 for (var x = 0; x < 4; x++)
                 {
@@ -263,37 +263,52 @@ namespace tmdl_utility
                         writer.Write(transform[x,y]);
                     }
                 }
+            }
 
-                writer.Write(children.Count);
-                foreach (var bone in children)
+            Bone(Node node) {
+                this.name = node.name;
+                this.id = node.id;
+                this.node = node;
+
+            }
+
+        }
+
+        public class Skeleton
+        {
+            public List<Bone> bones = new List<Bone>();
+
+            public void Write(ModelWriter writer) {
+                writer.Write(bones.Count);
+
+                foreach (var bone in bones)
                 {
                     bone.Write(writer);
                 }
             }
 
             public Bone GetBone(string name) {
-                foreach (var child in children)
+                foreach (var bone in bones)
                 {
-                    if (child.name == name)
-                        return child;
+                    if (bone.name == name)
+                        return bone;
                 }
                 return null;
             }
-        }
 
-        public class Skeleton
-        {
-            public Bone rootBone;
+            public Skeleton(Node rootNode) {
+                var nodes = rootNode.GetAllChildren();
+                nodes.Insert(rootNode, 0);
 
-            public void Write(ModelWriter writer) {
-                rootBone.Write(writer);
-            }
+                foreach (var node in nodes)
+                {
+                    var b =(new Bone(node))
 
-            public Bone GetBone(string name) {
-                if (rootBone.name == name)
-                    return rootBone;
+                    b.id = bones.Count;
 
-                return rootBone.GetBone(name);
+                    bones.Add(b);
+                }
+                
             }
         }
 
@@ -302,7 +317,7 @@ namespace tmdl_utility
         {
             public class NodeChannel {
                 public string NodeName;
-                public Bone bone;
+                public Bone Bone;
 
                 public List<Key<Vec3>> Positions = new List<Key<Vec3>>();
                 public List<Key<Vec4>> Rotations = new List<Key<Vec4>>();
@@ -364,6 +379,7 @@ namespace tmdl_utility
                 foreach (var [name, channel] in nodeChannels)
                 {
                     writer.Write(channel.NodeName);
+                    writer.Write(channel.Bone.id);
 
                     writer.Write(channel.Positions.Count);
                     foreach (var pkey in channel.Positions)
@@ -517,11 +533,27 @@ namespace tmdl_utility
             public string name;
             public Vec3 Position = new Vec3();
             public Vec3 Rotation = new Vec3();
-            public Vec3 Scale = new Vec3();
+            public Vec3 Scale = new Vec3(1);
 
             public List<int> Meshes;
 
             public List<Node> children = new List<Node>();
+            public Node parent = null;
+
+            public int id = -1;
+
+            public Node(string name = "Node") {
+                this.name = name;
+            }
+
+            public void SetParent(Node n) {
+                if (parent) {
+                    parent.children.Remove(this);
+                }
+
+                parent = n;
+                parent.children.Add(this);
+            }
 
             public Bone GetBone() {
                 var bone = new Bone();
@@ -612,11 +644,12 @@ namespace tmdl_utility
 
         }
 
-        public Node ProcessAiNode(Assimp.Node ai, bool isBone = false) {
+        public Node ProcessAiNode(Assimp.Node ai, int count = -1, bool isBone = false) {
 
             var node = new Node();
 
             node.name = ai.Name;
+            node.id = count++;
 
             node.Meshes = ai.MeshIndices;
 
@@ -651,7 +684,9 @@ namespace tmdl_utility
                 if (ai.Name == "Armature")
                     ib = true;
 
-                node.children.Add(ProcessAiNode(child, ib));
+                var n = ProcessAiNode(child, count, ib);
+
+                n.SetParent(node);
             }
 
             return node;
@@ -758,73 +793,18 @@ namespace tmdl_utility
                     }
 
                     var resFile = new ResFile(stream);
-                    var model = new Model();
+                    var scene = new Scene();
 
-                    #region Bfres Model Loading
+                    scene.name = resFile.name;
+                    scene.rootNode = new Node();
+                    scene.rootNode.name = "BfresRoot";
 
-                    var matList = new List<Material>();
-                    var mlist = new List<Mesh>();
-                    foreach (var (key, resfileModel) in resFile.Models)
-                    {
-                        int vct = 0;
-                        int midx = matList.Count;
-                        foreach (var (s, shape) in resfileModel.Shapes)
-                        {
-                            var vertexBuffer = resfileModel.VertexBuffers[shape.VertexBufferIndex];
+                    var nct = -1;
+                    var mshCt = -1;        
 
-                            var pos = ReadVertexBuffer(vertexBuffer, "_p0", resFile.ByteOrder);
-                            var nrm = ReadVertexBuffer(vertexBuffer, "_n0", resFile.ByteOrder);
-                            var uv0 = ReadVertexBuffer(vertexBuffer, "_u0", resFile.ByteOrder);
-
-                            var shapeMesh = shape.Meshes[0];
-
-                            var mesh = new Mesh();
-
-                            mesh.Vertices = pos.ToVec3Array();
-                            mesh.Normals = nrm.ToVec3Array();
-                            mesh.UV0 = uv0.ToVec2Array();
-                            mesh.Indices = new ushort[shapeMesh.IndexCount];
-
-                            var idxs = GetDisplayFaces(shapeMesh.GetIndices().ToList());
-                            for (int i = 0; i < shapeMesh.IndexCount; i++)
-                            {
-                                mesh.Indices[i] = (ushort)(idxs[i] + shapeMesh.FirstVertex);
-                            }
-
-                            vct += mesh.Vertices.Length;
-
-                            mesh.MaterialIndex = shape.MaterialIndex + midx;
-
-
-                            mlist.Add(mesh);
-                        }
-
-                        for (int j = 0; j < resfileModel.Materials.Count; j++)
-                        {
-                            var mat = resfileModel.Materials[j];
-                            var material = new Material();
-
-                            material.name = mat.Name;
-                            foreach (var (s, sampler) in mat.Samplers)
-                            {
-                                material.Textures.Add(s, mat.TextureRefs[mat.Samplers.IndexOf(sampler)].Name);
-                            }
-
-
-                            matList.Add(material);
-                        }
-
-                        if (vct != resfileModel.TotalVertexCount)
-                            throw new Exception($"Vertex counts do not match. {vct}, {resfileModel.TotalVertexCount}");
-                    }
-                    model.Meshes = mlist.ToArray();
-
-                    #endregion
-
-                    model.Textures = new Texture[resFile.Textures.Count];
+                    var textures = new Texture[resFile.Textures.Count];
                     if (resFile.IsPlatformSwitch)
                     {
-                        model.ModelScale = 1;
                         int ind = 0;
                         foreach (BfresLibrary.Switch.SwitchTexture texture in resFile.Textures.Values)
                         {
@@ -856,14 +836,13 @@ namespace tmdl_utility
 
                             tex.data = imgData;
 
-                            model.Textures[ind] = tex;
+                            textures[ind] = tex;
 
                             ind++;
                         }
                     }
                     else
                     {
-                        model.ModelScale = 0.1f;
                         int ind = 0;
                         foreach (BfresLibrary.WiiU.Texture texture in resFile.Textures.Values)
                         {
@@ -906,14 +885,107 @@ namespace tmdl_utility
 
                             tex.data = imgData;
 
-                            model.Textures[ind] = tex;
+                            textures[ind] = tex;
 
                             ind++;
                         }
                         
                     }
 
-                    model.Materials = matList.ToArray();
+                    #region Bfres Model Loading
+                    foreach (var (key, resfileModel) in resFile.Models)
+                    {
+                        int vct = 0;
+                        var model = new Model();
+
+                        var matList = new List<Material>();
+                        var mlist = new List<Mesh>();
+
+                        var rootNode = new Node()
+                        rootNode.name = resfileModel.name;
+                        rootNode.id = nct++;
+
+                        var armatureNode = new Node("Armature");
+
+                        var boneDict = new Dictionary<Bone, Node>();
+                        foreach (var bone in resfileModel.Skeleton.BoneList)
+                        {
+                            var bNode = new Node(bone.Name);
+
+                
+
+                            boneDict.Add(bone, bNode);
+                        }                        
+
+                        foreach (var [bone, node] in boneDict)
+                        {
+                            node.SetParent(boneDict[bone.ParentIndex]);
+                        }
+
+                        foreach (var (s, shape) in resfileModel.Shapes)
+                        {
+                            var vertexBuffer = resfileModel.VertexBuffers[shape.VertexBufferIndex];
+
+                            var pos = ReadVertexBuffer(vertexBuffer, "_p0", resFile.ByteOrder);
+                            var nrm = ReadVertexBuffer(vertexBuffer, "_n0", resFile.ByteOrder);
+                            var uv0 = ReadVertexBuffer(vertexBuffer, "_u0", resFile.ByteOrder);
+
+                            var shapeMesh = shape.Meshes[0];
+
+                            var mesh = new Mesh();
+
+                            mesh.Vertices = pos.ToVec3Array();
+                            mesh.Normals = nrm.ToVec3Array();
+                            mesh.UV0 = uv0.ToVec2Array();
+                            mesh.Indices = new ushort[shapeMesh.IndexCount];
+
+                            var idxs = GetDisplayFaces(shapeMesh.GetIndices().ToList());
+                            for (int i = 0; i < shapeMesh.IndexCount; i++)
+                            {
+                                mesh.Indices[i] = (ushort)(idxs[i] + shapeMesh.FirstVertex);
+                            }
+
+                            vct += mesh.Vertices.Length;
+
+                            mesh.MaterialIndex = shape.MaterialIndex;
+                            mshCt++;
+                            
+                            var node = new Node();
+                            node.name = shape.Name;
+
+                            node.Meshes = new List<int>{mshCt}
+
+                            mlist.Add(mesh);
+                        }
+
+                        for (int j = 0; j < resfileModel.Materials.Count; j++)
+                        {
+                            var mat = resfileModel.Materials[j];
+                            var material = new Material();
+
+                            material.name = mat.Name;
+                            foreach (var (s, sampler) in mat.Samplers)
+                            {
+                                material.Textures.Add(s, mat.TextureRefs[mat.Samplers.IndexOf(sampler)].Name);
+                            }
+
+
+                            matList.Add(material);
+                        }
+
+                        if (vct != resfileModel.TotalVertexCount)
+                            throw new Exception($"Vertex counts do not match. {vct}, {resfileModel.TotalVertexCount}");
+
+                        model.Meshes = mlist.ToArray();
+                        model.Textures = textures;
+                        model.Skeleton = new Skeleton(armatureNode);
+
+                        scene.Models.Add(model);
+                    }
+
+                    #endregion
+
+
 
                     var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
 
@@ -921,7 +993,7 @@ namespace tmdl_utility
 
                     var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
 
-                    model.Write(outStream);
+                    scene.Write(outStream);
 
                     outStream.Close();
 
@@ -955,7 +1027,7 @@ namespace tmdl_utility
 
                     mscene.rootNode = ProcessAiNode(scene.RootNode);
 
-                    var armatureNode = mscene.rootNode.AddNode("Armature");
+                    //var armatureNode = mscene.rootNode.AddNode("Armature");
 
 #region Assimp Models
 
@@ -1045,6 +1117,8 @@ namespace tmdl_utility
                         
                     }
 
+                    model.Skeleton = new Skeleton(mscene.RootNode);
+
                     model.Textures = new Texture[scene.TextureCount];
 
                     for (var i = 0; i < scene.Textures.Count; i++)
@@ -1107,7 +1181,18 @@ namespace tmdl_utility
                         model.Materials[scene.Materials.IndexOf(sceneMaterial)] = material;
                     }
 
-                    scene.Models.Add(model);
+                    model.Animations = new Animation[scene.AnimationCount];
+
+                    foreach (var anim in scene.Animations)
+                    {
+                        var animation = new Animation(anim);
+
+                        animation.ApplySkeleton(model.Skeleton);
+
+                        model.Animations[scene.Animations.IndexOf(anim)] = animation;
+                    }
+
+                    mscene.Models.Add(model);
 
                     #endregion
 
