@@ -77,6 +77,21 @@ namespace tmdl_utility
                 W = w;
             }
 
+            public Vec4(System.Numerics.Vector4 v) {
+                X = v.X;
+                Y = v.Y;
+                Z = v.Z;
+                W = v.W;
+            }
+
+            public Vec4(System.Numerics.Quaternion v) {
+                X = v.X;
+                Y = v.Y;
+                Z = v.Z;
+                W = v.W;
+            }
+
+
             public Vec3 ToVec3()
             {
                 return new Vec3(X, Y, Z);
@@ -131,6 +146,12 @@ namespace tmdl_utility
             public Vec3() : this(0)
             {
                 
+            }
+
+            public Vec3(System.Numerics.Vector3 v) {
+                X = v.X;
+                Y = v.Y;
+                Z = v.Z;
             }
 
             public void Write(ModelWriter writer) {
@@ -227,30 +248,125 @@ namespace tmdl_utility
         {
             public string name;
             public Matrix4 transform;
+            public Node node;
+            public int id = -1;
 
             public List<Bone> children;
+
+            public void Write(ModelWriter writer) {
+                writer.WriteNonSigString(name);
+
+                for (var x = 0; x < 4; x++)
+                {
+                    for (var y = 0; y < 4; y++)
+                    {
+                        writer.Write(transform[x,y]);
+                    }
+                }
+
+                writer.Write(children.Count);
+                foreach (var bone in children)
+                {
+                    bone.Write(writer);
+                }
+            }
+
+            public Bone GetBone(string name) {
+                foreach (var child in children)
+                {
+                    if (child.name == name)
+                        return child;
+                }
+                return null;
+            }
         }
 
         public class Skeleton
         {
             public Bone rootBone;
+
+            public void Write(ModelWriter writer) {
+                rootBone.Write(writer);
+            }
+
+            public Bone GetBone(string name) {
+                if (rootBone.name == name)
+                    return rootBone;
+
+                return rootBone.GetBone(name);
+            }
         }
 
 
         public class Animation
         {
-            public class BoneInfo
-            {
-                public int Index;
-                public List<Key<Vec3>> Positions;
-                public List<Key<Vec4>> Rotations;
-                public List<Key<Vec3>> Scales;
+            public class NodeChannel {
+                public string NodeName;
+                public Bone bone;
+
+                public List<Key<Vec3>> Positions = new List<Key<Vec3>>();
+                public List<Key<Vec4>> Rotations = new List<Key<Vec4>>();
+                public List<Key<Vec3>> Scales = new List<Key<Vec3>>();
             }
 
-            public Dictionary<string, BoneInfo> infoMap;
+            public Dictionary<string,NodeChannel> nodeChannels = new Dictionary<string,NodeChannel>();
             public float duration;
             public int ticksPerSecond;
+            public string name;
             
+            public Animation(Assimp.Animation anim) {
+
+                name = anim.Name;
+                duration = anim.Duration;
+                ticksPerSecond = anim.TicksPerSecond;
+
+                foreach (var ch in anim.NodeAnimationChannels)
+                {
+                    var channel = new NodeChannel();
+                    channel.NodeName = ch.NodeName;
+
+                    foreach (var pkey in ch.PositionKeys)
+                    {
+                        channel.Positions.Add(pkey.Time, new Vec3(pkey.Value));
+                    }
+
+                    foreach (var pkey in ch.RositionKeys)
+                    {
+                        channel.Rotations.Add(pkey.Time, new Vec4(pkey.Value));
+                    }
+
+                    foreach (var pkey in ch.ScalingKeys)
+                    {
+                        channel.Scales.Add(pkey.Time, new Vec3(pkey.Value));
+                    }
+
+                    nodeChannels.Add(channel.NodeName,channel);
+                }
+
+            }
+
+            public void ApplySkeleton(Skeleton skeleton) {
+                foreach (var [name, channel] in nodeChannels)
+                {
+                    channel.Bone = skeleton.GetBone(name);
+                }
+            }
+    
+
+            public void Write(ModelWriter writer) {
+                writer.WriteString("TANM");
+
+                writer.WriteNonSigString(name);
+                writer.Write(duration);
+                writer.Write(ticksPerSecond);
+
+                writer.Write(nodeChannels.Count);
+                foreach (var [name, channel] in nodeChannels)
+                {
+                    
+                }
+                
+            }
         }
 
         public class Model
@@ -258,7 +374,7 @@ namespace tmdl_utility
             public Mesh[] Meshes;
             public Texture[] Textures;
             public Material[] Materials;
-            public Skeleton[] Skeletons;
+            public Skeleton Skeleton;
             public Animation[] Animations;
 
             public float ModelScale = 1;
@@ -360,6 +476,15 @@ namespace tmdl_utility
                         writer.WriteNonSigString(value);
                     }
                 }
+
+                writer.WriteString("TSKL");
+                this.Skeleton.Write(writer);
+
+                writer.Write(Animations.Length);
+                foreach (var anim in Animations)
+                {
+                    anim.Write(writer);
+                }
             }
         }
 
@@ -402,6 +527,8 @@ namespace tmdl_utility
                 {
                     child.Write(writer);
                 }
+
+
             }
 
             public Node GetChild(string name) {
@@ -440,13 +567,9 @@ namespace tmdl_utility
         public class Scene {
             public string name;
 
-<<<<<<< HEAD
             public List<Model> models = new List<Model>();
 
             public Node rootNode;
-=======
-            public Node rootNode;
->>>>>>> 1b2dacc5be7679bafcd23d2c5177e4f3d0720972
 
             public void Write(ModelWriter writer) {
 
@@ -843,7 +966,7 @@ namespace tmdl_utility
                             foreach (var (vertexId, weight) in bone.VertexWeights)
                             {
                                 boneIndices[vertexId].Add(boneId);
-                                boneWeights[vertexId].Add(weight);
+                                boneWeights[vertexId].Add(we6ight);
                             }
                         }
 
