@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -120,10 +121,57 @@ namespace tmdl_utility
                 Z = z;
             }
 
+            public Vec3(float s)
+            {
+                X = s;
+                Y = s;
+                Z = s;
+            }
+
+            public Vec3() : this(0)
+            {
+                
+            }
+
             public void Write(ModelWriter writer) {
                 writer.Write(X);
                 writer.Write(Y);
                 writer.Write(Z);
+            }
+
+
+            public float Magnitude
+            {
+                get { return MathF.Sqrt(MathF.Pow(X, 2) + MathF.Pow(Y, 2) + MathF.Pow(Z, 2)); }
+
+            }
+
+            public static Vec3 operator +(Vec3 v1, Vec3 v2)
+            {
+                return new Vec3(v1.X + v2.X, v1.Y + v2.Y, v1.Z + v2.Z);
+            }
+
+            public static Vec3 operator -(Vec3 v1, Vec3 v2)
+            {
+                return new Vec3(v1.X - v2.X, v1.Y - v2.Y, v1.Z - v2.Z);
+            }
+
+            public static Vec3 operator *(Vec3 v1, Vec3 v2)
+            {
+                return new Vec3(v1.X * v2.X, v1.Y * v2.Y, v1.Z * v2.Z);
+            }
+            public static Vec3 operator /(Vec3 v1, Vec3 v2)
+            {
+                return new Vec3(v1.X/ v2.X, v1.Y / v2.Y, v1.Z / v2.Z);
+            }
+            public static Vec3 operator /(Vec3 v1, float v2)
+            {
+                return new Vec3(v1.X / v2, v1.Y / v2, v1.Z / v2);
+            }
+
+            public static Vec3 operator-(Vec3 v1)
+            {
+                return new Vec3(-v1.X, -v1.Y, -v1.Z);
             }
         }
 
@@ -327,13 +375,13 @@ namespace tmdl_utility
 
         public class Node {
             public string name;
-            public Vec3 Position;
-            public Vec3 Rotation;
-            public Vec3 Scale;
+            public Vec3 Position = new Vec3();
+            public Vec3 Rotation = new Vec3();
+            public Vec3 Scale = new Vec3();
 
             public List<int> Meshes;
 
-            public List<Node> children;
+            public List<Node> children = new List<Node>();
 
             public Bone GetBone() {
                 var bone = new Bone();
@@ -372,7 +420,8 @@ namespace tmdl_utility
                     if (child.name == name)
                         return child;
                 }
-                return null
+
+                return null;
             }
 
             public List<Node> GetAllChildren() {
@@ -392,7 +441,7 @@ namespace tmdl_utility
 
                 node.name = name;
 
-                children.add(node);
+                children.Add(node);
 
                 return node;
             }
@@ -401,7 +450,7 @@ namespace tmdl_utility
         public class Scene {
             public string name;
 
-            Node rootNode;
+            public Node rootNode;
 
             public void Write(ModelWriter writer) {
 
@@ -419,9 +468,34 @@ namespace tmdl_utility
 
             node.name = ai.Name;
 
-            node.meshes = ai.MeshIndices;
+            node.Meshes = ai.MeshIndices;
 
-            foreach (var child in ai.children)
+            node.Position.X = ai.Transform[0, 3];
+            node.Position.Y = ai.Transform[1, 3];
+            node.Position.Z = ai.Transform[2, 3];
+
+            Vec3[] cols = new Vec3[]
+            {
+                new Vec3(ai.Transform[0,0], ai.Transform[1,0], ai.Transform[2,0]),
+                new Vec3(ai.Transform[0,2], ai.Transform[1,1], ai.Transform[2,1]),
+                new Vec3(ai.Transform[0,1], ai.Transform[1,2], ai.Transform[2,2]),
+            };
+
+            node.Scale.X = cols[0].Magnitude;
+            node.Scale.Y = cols[1].Magnitude;
+            node.Scale.Z = cols[2].Magnitude;
+
+            if (ai.Transform.GetDeterminant() < 0) node.Scale = -node.Scale;
+
+            cols[0] /= node.Scale.X;
+            cols[1] /= node.Scale.Y;
+            cols[2] /= node.Scale.Z;
+
+            //Matrix3x3 r = new Matrix3x3(cols[0].X, cols[0].Y, cols[0].Z, cols[1].X, cols[1].Y, cols[1].Z, cols[2].X, cols[2].Y, cols[2].Z);
+
+            //node.Rotation =
+
+            foreach (var child in ai.Children)
             {
                 var ib = isBone;
                 if (ai.Name == "Armature")
@@ -730,9 +804,9 @@ namespace tmdl_utility
 
                     mscene.name = scene.Name;
 
-                    mscene.rootNode = ProcessAiNode(scene.rootNode);
+                    mscene.rootNode = ProcessAiNode(scene.RootNode);
 
-                    var armatureNode = mscene.rootNode.AddNode("Armature")
+                    var armatureNode = mscene.rootNode.AddNode("Armature");
 
                     var boneDict = new Dictionary<string, Assimp.Bone>();
 ;
@@ -806,10 +880,10 @@ namespace tmdl_utility
                             }
                         }
 
-                        foreach (var bone in sceneMesh.bones)
+                        foreach (var bone in sceneMesh.Bones)
                         {
                             if (!boneDict.ContainsKey(bone.Name)) {
-                                boneDict.Add(bone.Name, Bone);
+                                boneDict.Add(bone.Name, bone);
                             }
                         }
 
