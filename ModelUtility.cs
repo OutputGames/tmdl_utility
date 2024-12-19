@@ -241,7 +241,7 @@ namespace tmdl_utility
         {
             public float timeStamp;
 
-            private T value;
+            public T value;
         }
 
         public class Bone
@@ -327,17 +327,17 @@ namespace tmdl_utility
 
                     foreach (var pkey in ch.PositionKeys)
                     {
-                        channel.Positions.Add(pkey.Time, new Vec3(pkey.Value));
+                        channel.Positions.Add(new Key<Vec3>(pkey.Time, new Vec3(pkey.Value)));
                     }
 
                     foreach (var pkey in ch.RositionKeys)
                     {
-                        channel.Rotations.Add(pkey.Time, new Vec4(pkey.Value));
+                        channel.Rotations.Add(new Key<Vec4>(pkey.Time, new Vec4(pkey.Value)));
                     }
 
                     foreach (var pkey in ch.ScalingKeys)
                     {
-                        channel.Scales.Add(pkey.Time, new Vec3(pkey.Value));
+                        channel.Scales.Add(new Key<Vec3>(pkey.Time, new Vec3(pkey.Value)));
                     }
 
                     nodeChannels.Add(channel.NodeName,channel);
@@ -363,7 +363,32 @@ namespace tmdl_utility
                 writer.Write(nodeChannels.Count);
                 foreach (var [name, channel] in nodeChannels)
                 {
-                    
+                    writer.Write(channel.NodeName);
+
+                    writer.Write(channel.Positions.Count);
+                    foreach (var pkey in channel.Positions)
+                    {
+                        writer.Write(pkey.timeStamp)
+
+                        pkey.value.Write(writer);
+                    }
+
+                    writer.Write(channel.Rotations.Count);
+                    foreach (var pkey in channel.Rotations)
+                    {
+                        writer.Write(pkey.timeStamp)
+
+                        pkey.value.Write(writer);
+                    }
+
+                    writer.Write(channel.Scales.Count);
+                    foreach (var pkey in channel.Scales)
+                    {
+                        writer.Write(pkey.timeStamp)
+
+                        pkey.value.Write(writer);
+                    }
+
                 }
                 
             }
