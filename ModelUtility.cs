@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -263,112 +263,102 @@ namespace tmdl_utility
 
             public float ModelScale = 1;
 
-            public byte[] ToBytes()
+            public void Write(ModelWriter writer)
             {
-                using (MemoryStream ms = new MemoryStream())
+                writer.WriteString("TMDL");
+                writer.Write(ModelScale);
+
+                writer.Write(Meshes.Length);
+                foreach (var mesh in Meshes)
                 {
-                    using (ModelWriter writer = new ModelWriter(ms))
+                    writer.WriteString("TMSH");
+                    writer.Write(mesh.Vertices.Length);
+
+                    writer.WriteString("TVTX");
+                    for (var i = 0; i < mesh.Vertices.Length; i++)
                     {
+                        var meshVertex = mesh.Vertices[i];
+                        writer.Write(meshVertex.X);
+                        writer.Write(meshVertex.Y);
+                        writer.Write(meshVertex.Z);
+                        meshVertex = mesh.Normals[i];
+                        writer.Write(meshVertex.X);
+                        writer.Write(meshVertex.Y);
+                        writer.Write(meshVertex.Z);
+                        var _meshVertex = mesh.UV0[i];
+                        writer.Write(_meshVertex.X);
+                        writer.Write(_meshVertex.Y);
 
-                        writer.Write(ModelScale);
-
-                        writer.Write(Meshes.Length);
-                        foreach (var mesh in Meshes)
+                        var boneIdx = mesh.BoneIDs[i];
+                        writer.Write(boneIdx.Length);
+                        for (int j = 0; j < boneIdx.Length; j++)
                         {
-                            writer.WriteString("TMSH");
-                            writer.Write(mesh.Vertices.Length);
-
-                            writer.WriteString("TVTX");
-                            for (var i = 0; i < mesh.Vertices.Length; i++)
-                            {
-                                var meshVertex = mesh.Vertices[i];
-                                writer.Write(meshVertex.X);
-                                writer.Write(meshVertex.Y);
-                                writer.Write(meshVertex.Z);
-                                meshVertex = mesh.Normals[i];
-                                writer.Write(meshVertex.X);
-                                writer.Write(meshVertex.Y);
-                                writer.Write(meshVertex.Z);
-                                var _meshVertex = mesh.UV0[i];
-                                writer.Write(_meshVertex.X);
-                                writer.Write(_meshVertex.Y);
-
-                                var boneIdx = mesh.BoneIDs[i];
-                                writer.Write(boneIdx.Length);
-                                for (int j = 0; j < boneIdx.Length; j++)
-                                {
-                                    writer.Write(boneIdx[j]);
-                                }
-
-
-                                var weights = mesh.VertexWeights[i];
-                                writer.Write(weights.Length);
-                                for (int j = 0; j < weights.Length; j++)
-                                {
-                                    writer.Write(weights[j]);
-                                }
-                            }
-
-
-                            writer.WriteString("TIDX");
-                            writer.Write(mesh.Indices.Length);
-                            foreach (var meshIndex in mesh.Indices)
-                            {
-                                writer.Write(meshIndex);
-                            }
-
-                            writer.Write(mesh.MaterialIndex);
+                            writer.Write(boneIdx[j]);
                         }
 
-                        writer.Write(Textures.Length);
-                        foreach (var texture in Textures)
+
+                        var weights = mesh.VertexWeights[i];
+                        writer.Write(weights.Length);
+                        for (int j = 0; j < weights.Length; j++)
                         {
-                            writer.WriteString("TTEX");
-
-                            writer.Write(texture.name.Length);
-                            writer.WriteString(texture.name);
-                            writer.Write(texture.width);
-                            writer.Write(texture.height);
-                            writer.Write(texture.channelCount);
-
-                            //writer.Write(texture.data);
-                            
-                            
-                            for (int y  = 0; y < texture.height; y++)
-                            {
-                                for (int x = 0; x < texture.width; x++)
-                                {
-                                    for (int i = 0; i < texture.channelCount; i++)
-                                    {
-                                        var idx = (y * texture.width + x) * texture.channelCount;
-                                        writer.Write(texture.data[idx + i]);
-                                    }
-                                }
-                            }
-                            
-                            
-                            
+                            writer.Write(weights[j]);
                         }
-
-                        writer.Write(Materials.Length);
-                        foreach (var material in Materials)
-                        {
-                            writer.WriteString("TMAT");
-
-                            writer.WriteNonSigString(material.name);
-
-                            writer.Write(material.Textures.Count);
-                            foreach (var (key, value) in material.Textures)
-                            {
-                                writer.WriteNonSigString(key);
-                                writer.WriteNonSigString(value);
-                            }
-                        }
-
-                        writer.Close();
                     }
 
-                    return ms.ToArray();
+
+                    writer.WriteString("TIDX");
+                    writer.Write(mesh.Indices.Length);
+                    foreach (var meshIndex in mesh.Indices)
+                    {
+                        writer.Write(meshIndex);
+                    }
+
+                    writer.Write(mesh.MaterialIndex);
+                }
+
+                writer.Write(Textures.Length);
+                foreach (var texture in Textures)
+                {
+                    writer.WriteString("TTEX");
+
+                    writer.Write(texture.name.Length);
+                    writer.WriteString(texture.name);
+                    writer.Write(texture.width);
+                    writer.Write(texture.height);
+                    writer.Write(texture.channelCount);
+
+                    //writer.Write(texture.data);
+                    
+                    
+                    for (int y  = 0; y < texture.height; y++)
+                    {
+                        for (int x = 0; x < texture.width; x++)
+                        {
+                            for (int i = 0; i < texture.channelCount; i++)
+                            {
+                                var idx = (y * texture.width + x) * texture.channelCount;
+                                writer.Write(texture.data[idx + i]);
+                            }
+                        }
+                    }
+                    
+                    
+                    
+                }
+
+                writer.Write(Materials.Length);
+                foreach (var material in Materials)
+                {
+                    writer.WriteString("TMAT");
+
+                    writer.WriteNonSigString(material.name);
+
+                    writer.Write(material.Textures.Count);
+                    foreach (var (key, value) in material.Textures)
+                    {
+                        writer.WriteNonSigString(key);
+                        writer.WriteNonSigString(value);
+                    }
                 }
             }
         }
@@ -450,13 +440,25 @@ namespace tmdl_utility
         public class Scene {
             public string name;
 
+<<<<<<< HEAD
+            public List<Model> models = new List<Model>();
+
             public Node rootNode;
+=======
+            public Node rootNode;
+>>>>>>> 1b2dacc5be7679bafcd23d2c5177e4f3d0720972
 
             public void Write(ModelWriter writer) {
 
                 writer.WriteNonSigString(name);
                 
                 rootNode.Write(writer);
+
+                writer.Write(models.Count);
+                foreach (var model in models)
+                {
+                    model.Write(writer);
+                }
 
             }
 
@@ -771,8 +773,7 @@ namespace tmdl_utility
 
                     var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
 
-                    outStream.WriteString("TMDL");
-                    outStream.Write(model.ToBytes());
+                    model.Write(outStream);
 
                     outStream.Close();
 
@@ -808,8 +809,10 @@ namespace tmdl_utility
 
                     var armatureNode = mscene.rootNode.AddNode("Armature");
 
+#region Assimp Models
+
                     var boneDict = new Dictionary<string, Assimp.Bone>();
-;
+
                     var model = new Model();
                     model.Meshes = new Mesh[scene.MeshCount];
 
@@ -956,14 +959,18 @@ namespace tmdl_utility
                         model.Materials[scene.Materials.IndexOf(sceneMaterial)] = material;
                     }
 
+                    scene.Models.Add(model);
+
+                    #endregion
+
                     var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
 
                     outPath = Path.GetFullPath(outPath);
 
                     var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
 
-                    outStream.WriteString("TMDL");
-                    outStream.Write(model.ToBytes());
+                    outStream.WriteString("TSCN");
+                    scene.Write(outStream);
 
                     outStream.Close();
 
