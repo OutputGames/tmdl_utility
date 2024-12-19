@@ -91,6 +91,13 @@ namespace tmdl_utility
                 W = v.W;
             }
 
+            public Vec4(Syroot.Maths.Vec4 v) {
+                X = v.X;
+                Y = v.Y;
+                Z = v.Z;
+                W = v.W;
+            }
+
 
             public Vec3 ToVec3()
             {
@@ -149,6 +156,12 @@ namespace tmdl_utility
             }
 
             public Vec3(System.Numerics.Vector3 v) {
+                X = v.X;
+                Y = v.Y;
+                Z = v.Z;
+            }
+
+            public Vec3(Syroot.Maths.Vector3F v) {
                 X = v.X;
                 Y = v.Y;
                 Z = v.Z;
@@ -892,6 +905,143 @@ namespace tmdl_utility
                         
                     }
 
+                    foreach (var [name, anim] in resFile.SkeletalAnims) {
+                        var animation = new Animation();
+
+                        animation.name = name;
+                        animation.duration = anim.FrameCount;
+
+                        foreach (var boneAnim in anim.BoneAnims)
+                        {
+                            var channel = new Animation.NodeChannel();
+                            channel.NodeName = boneAnim.Name;
+
+                            var basePos = new Vec3(boneAnim.BaseData.Translate);
+                            var baseRot = new Vec4(boneAnim.BaseData.Rotate);
+                            var baseScl = new Vec3(boneAnim.BaseData.Scale);
+
+                            // refactor --
+                            if (boneAnim.Curves.Count > 0)
+                            {
+                                for (var i1 = 0; i1 < boneAnim.Curves.Count; i1++)
+                                {
+                                    AnimCurve curve = boneAnim.Curves[i1];
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            Key<Vec3> posKey = new Key<Vec3>();
+                                            posKey.Time = frame.Key/anim.FrameCount;
+                                            posKey.Value.X = ((HermiteKey)frame.Value).Value;
+                                            channel.PositionKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            VectorKey posKey = new VectorKey();
+                                            posKey.Time = frame.Key/anim.FrameCount;
+                                            posKey.Value.Y = ((HermiteKey)frame.Value).Value;
+                                            channel.PositionKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            VectorKey posKey = new VectorKey();
+                                            posKey.Time = frame.Key/anim.FrameCount;
+                                            posKey.Value.Z = ((HermiteKey)frame.Value).Value;
+                                            channel.PositionKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            QuaternionKey posKey = new QuaternionKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.X = ((HermiteKey)frame.Value).Value;
+                                            channel.RotationKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            QuaternionKey posKey = new QuaternionKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.Y = ((HermiteKey)frame.Value).Value;
+                                            channel.RotationKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            QuaternionKey posKey = new QuaternionKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.Z = ((HermiteKey)frame.Value).Value;
+                                            channel.RotationKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            QuaternionKey posKey = new QuaternionKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.W = ((HermiteKey)frame.Value).Value;
+                                            channel.RotationKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            VectorKey posKey = new VectorKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.X = ((HermiteKey)frame.Value).Value;
+                                            channel.ScalingKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            VectorKey posKey = new VectorKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.Y = ((HermiteKey)frame.Value).Value;
+                                            channel.ScalingKeys.Add(posKey);
+                                        }
+                                    }
+
+                                    {
+                                        CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
+                                        foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                                        {
+                                            VectorKey posKey = new VectorKey();
+                                            posKey.Time = frame.Key / anim.FrameCount;
+                                            posKey.Value.Z = ((HermiteKey)frame.Value).Value;
+                                            channel.ScalingKeys.Add(posKey);
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+
                     #region Bfres Model Loading
                     foreach (var (key, resfileModel) in resFile.Models)
                     {
@@ -907,12 +1057,14 @@ namespace tmdl_utility
 
                         var armatureNode = new Node("Armature");
 
-                        var boneDict = new Dictionary<Bone, Node>();
+                        var boneDict = new Dictionary<BfresLibrary.Bone, Node>();
                         foreach (var bone in resfileModel.Skeleton.BoneList)
                         {
                             var bNode = new Node(bone.Name);
 
-                
+                            bNode.Position = new Vec3(bone.Position.X, bone.Position.Y, bone.Position.Z);
+                            bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+                            bNode.Scale = new Vec3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z);
 
                             boneDict.Add(bone, bNode);
                         }                        
