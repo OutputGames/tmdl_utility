@@ -77,6 +77,11 @@ namespace tmdl_utility
                 W = w;
             }
 
+            public Vec4()
+            {
+
+            }
+
             public Vec4(System.Numerics.Vector4 v) {
                 X = v.X;
                 Y = v.Y;
@@ -91,7 +96,7 @@ namespace tmdl_utility
                 W = v.W;
             }
 
-            public Vec4(Syroot.Maths.Vec4 v) {
+            public Vec4(Syroot.Maths.Vector4F v) {
                 X = v.X;
                 Y = v.Y;
                 Z = v.Z;
@@ -128,6 +133,14 @@ namespace tmdl_utility
 
                     return new Vec4(X / mag, Y / mag, Z / mag, W / mag);
                 }
+            }
+
+            public void Write(ModelWriter writer)
+            {
+                writer.Write(X);
+                writer.Write(Y);
+                writer.Write(Z);
+                writer.Write(W);
             }
         }
         
@@ -255,33 +268,71 @@ namespace tmdl_utility
             public float timeStamp;
 
             public T value;
+
+            public float Time
+            {
+                get { return timeStamp; }
+                set { timeStamp = value; }
+            }
+
+            public Key(float time, T val)
+            {
+                this.timeStamp = time;
+                this.value = val;
+            }
         }
 
         public class Bone
         {
             public string name;
-            public Matrix4 transform;
+            public Vec3 Position = new Vec3();
+            public Vec4 Rotation = new Vec4();
+            public Vec3 Scale = new Vec3(1);
             public Node node;
             public int id = -1;
+
+
+            public Bone parent;
+            public List<Bone> children = new List<Bone>();
+
+            public void SetParent(Bone b)
+            {
+                if (parent != null)
+                    parent.children.Remove(this);
+                parent = b;
+                parent.children.Add(this);
+            }
+
+            public void AddChild(Bone b)
+            {
+                b.SetParent(this);
+            }
+
 
             public void Write(ModelWriter writer) {
                 writer.WriteNonSigString(name);
 
                 writer.Write(id);
 
-                for (var x = 0; x < 4; x++)
-                {
-                    for (var y = 0; y < 4; y++)
-                    {
-                        writer.Write(transform[x,y]);
-                    }
-                }
+                Position.Write(writer);
+                Rotation.Write(writer);
+                Scale.Write(writer);
             }
 
-            Bone(Node node) {
+            public Bone(Node node) {
                 this.name = node.name;
                 this.id = node.id;
                 this.node = node;
+
+                this.Position = node.Position;
+                this.Rotation = node.Rotation;
+                this.Scale = node.Scale;
+
+                node.IsBone = true;
+            }
+
+            public Bone()
+            {
 
             }
 
@@ -290,6 +341,7 @@ namespace tmdl_utility
         public class Skeleton
         {
             public List<Bone> bones = new List<Bone>();
+            public string rootName;
 
             public void Write(ModelWriter writer) {
                 writer.Write(bones.Count);
@@ -298,6 +350,8 @@ namespace tmdl_utility
                 {
                     bone.Write(writer);
                 }
+
+                writer.WriteNonSigString(rootName);
             }
 
             public Bone GetBone(string name) {
@@ -309,19 +363,40 @@ namespace tmdl_utility
                 return null;
             }
 
+            public Node ToNode()
+            {
+                var rootNode = new Node(bones[0]);
+
+                return rootNode;
+            }
+
             public Skeleton(Node rootNode) {
                 var nodes = rootNode.GetAllChildren();
-                nodes.Insert(rootNode, 0);
+                rootName = rootNode.name;
+
+                var rootBone = new Bone(rootNode);
+                rootBone.id = bones.Count;
+                bones.Add(rootBone);
 
                 foreach (var node in nodes)
                 {
-                    var b =(new Bone(node))
+                    var b = new Bone(node);
 
                     b.id = bones.Count;
 
                     bones.Add(b);
                 }
-                
+
+                foreach (var node in nodes)
+                {
+                    var bone = GetBone(node.name);
+                    if (node.parent != null)
+                    {
+                        var parent = GetBone(node.parent.name);
+                        bone.SetParent(parent);
+                    }
+                }
+
             }
         }
 
@@ -341,12 +416,17 @@ namespace tmdl_utility
             public float duration;
             public int ticksPerSecond;
             public string name;
-            
+
+            public Animation()
+            {
+
+            }
+
             public Animation(Assimp.Animation anim) {
 
                 name = anim.Name;
-                duration = anim.Duration;
-                ticksPerSecond = anim.TicksPerSecond;
+                duration = (float)anim.DurationInTicks;
+                ticksPerSecond = (int)anim.TicksPerSecond;
 
                 foreach (var ch in anim.NodeAnimationChannels)
                 {
@@ -355,17 +435,17 @@ namespace tmdl_utility
 
                     foreach (var pkey in ch.PositionKeys)
                     {
-                        channel.Positions.Add(new Key<Vec3>(pkey.Time, new Vec3(pkey.Value)));
+                        channel.Positions.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
                     }
 
-                    foreach (var pkey in ch.RositionKeys)
+                    foreach (var pkey in ch.RotationKeys)
                     {
-                        channel.Rotations.Add(new Key<Vec4>(pkey.Time, new Vec4(pkey.Value)));
+                        channel.Rotations.Add(new Key<Vec4>((float)pkey.Time, new Vec4(pkey.Value)));
                     }
 
                     foreach (var pkey in ch.ScalingKeys)
                     {
-                        channel.Scales.Add(new Key<Vec3>(pkey.Time, new Vec3(pkey.Value)));
+                        channel.Scales.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
                     }
 
                     nodeChannels.Add(channel.NodeName,channel);
@@ -374,7 +454,7 @@ namespace tmdl_utility
             }
 
             public void ApplySkeleton(Skeleton skeleton) {
-                foreach (var [name, channel] in nodeChannels)
+                foreach (var (name, channel) in nodeChannels)
                 {
                     channel.Bone = skeleton.GetBone(name);
                 }
@@ -389,15 +469,15 @@ namespace tmdl_utility
                 writer.Write(ticksPerSecond);
 
                 writer.Write(nodeChannels.Count);
-                foreach (var [name, channel] in nodeChannels)
+                foreach (var (name, channel) in nodeChannels)
                 {
-                    writer.Write(channel.NodeName);
+                    writer.WriteNonSigString(channel.NodeName);
                     writer.Write(channel.Bone.id);
 
                     writer.Write(channel.Positions.Count);
                     foreach (var pkey in channel.Positions)
                     {
-                        writer.Write(pkey.timeStamp)
+                        writer.Write(pkey.timeStamp);
 
                         pkey.value.Write(writer);
                     }
@@ -405,7 +485,7 @@ namespace tmdl_utility
                     writer.Write(channel.Rotations.Count);
                     foreach (var pkey in channel.Rotations)
                     {
-                        writer.Write(pkey.timeStamp)
+                        writer.Write(pkey.timeStamp);
 
                         pkey.value.Write(writer);
                     }
@@ -413,7 +493,7 @@ namespace tmdl_utility
                     writer.Write(channel.Scales.Count);
                     foreach (var pkey in channel.Scales)
                     {
-                        writer.Write(pkey.timeStamp)
+                        writer.Write(pkey.timeStamp);
 
                         pkey.value.Write(writer);
                     }
@@ -545,10 +625,11 @@ namespace tmdl_utility
         public class Node {
             public string name;
             public Vec3 Position = new Vec3();
-            public Vec3 Rotation = new Vec3();
+            public Vec4 Rotation = new Vec4();
             public Vec3 Scale = new Vec3(1);
 
-            public List<int> Meshes;
+            public List<int> Meshes = new List<int>();
+            public bool IsBone;
 
             public List<Node> children = new List<Node>();
             public Node parent = null;
@@ -559,25 +640,32 @@ namespace tmdl_utility
                 this.name = name;
             }
 
-            public void SetParent(Node n) {
-                if (parent) {
-                    parent.children.Remove(this);
+            public Node(Bone bone)
+            {
+                this.name = bone.name;
+                IsBone = true;
+                this.Position = bone.Position;
+                this.Rotation = bone.Rotation;
+                this.Scale = bone.Scale;
+
+                foreach (var boneChild in bone.children)
+                {
+                    var n = new Node(boneChild);
+                    n.SetParent(this);
                 }
+            }
+
+            public void SetParent(Node n) {
+                if (parent != null)
+                    parent.children.Remove(this);
 
                 parent = n;
                 parent.children.Add(this);
             }
 
-            public Bone GetBone() {
-                var bone = new Bone();
-                bone.name = name;
-
-                foreach (var child in children)
-                {
-                    bone.children.Add(child.GetBone());
-                }
-
-                return bone;
+            public void AddChild(Node n)
+            {
+                n.SetParent(this);
             }
 
             public void Write(ModelWriter writer) {
@@ -587,10 +675,13 @@ namespace tmdl_utility
                 Rotation.Write(writer);
                 Scale.Write(writer);
 
+                writer.Write(Meshes.Count);
                 foreach (var idx in Meshes)
                 {
                     writer.Write(idx);
                 }
+
+                writer.Write(IsBone);
 
                 writer.Write(children.Count);
                 foreach (var child in children)
@@ -611,6 +702,34 @@ namespace tmdl_utility
                 return null;
             }
 
+            public bool RemoveChild(string name)
+            {
+                int i = 0;
+                bool found = false;
+                foreach (var child in children)
+                {
+                    if (child.name == name)
+                    {
+                        found = true;
+                        break;
+                    }
+                    else
+                    {
+                        found = child.RemoveChild(name);
+                        if (found)
+                        {
+                            return true;
+                        }
+                    }
+
+                    i++;
+                }
+
+                if (found)
+                    children.RemoveAt(i);
+                return found;
+            }
+
             public List<Node> GetAllChildren() {
                 var c = new List<Node>();
 
@@ -628,9 +747,14 @@ namespace tmdl_utility
 
                 node.name = name;
 
-                children.Add(node);
+                node.SetParent(this);
 
                 return node;
+            }
+
+            public void AddNode(Node node)
+            {
+                node.SetParent(this);
             }
         }
 
@@ -642,7 +766,7 @@ namespace tmdl_utility
             public Node rootNode;
 
             public void Write(ModelWriter writer) {
-
+                writer.WriteString("TSCN");
                 writer.WriteNonSigString(name);
                 
                 rootNode.Write(writer);
@@ -653,6 +777,29 @@ namespace tmdl_utility
                     model.Write(writer);
                 }
 
+            }
+
+            public bool RemoveNode(string name)
+            {
+                if (rootNode.name == name)
+                {
+                    rootNode = new Node();
+                    return true;
+                }
+                else
+                {
+                    return rootNode.RemoveChild(name);
+                }
+
+            }
+
+            public Node GetNode(string name)
+            {
+                if (rootNode.name == name)
+                    return rootNode;
+
+                var nodes = rootNode.GetAllChildren();
+                return (nodes.Find(x => x.name == name) ?? null)!;
             }
 
         }
@@ -808,7 +955,7 @@ namespace tmdl_utility
                     var resFile = new ResFile(stream);
                     var scene = new Scene();
 
-                    scene.name = resFile.name;
+                    scene.name = resFile.Name;
                     scene.rootNode = new Node();
                     scene.rootNode.name = "BfresRoot";
 
@@ -905,7 +1052,7 @@ namespace tmdl_utility
                         
                     }
 
-                    foreach (var [name, anim] in resFile.SkeletalAnims) {
+                    foreach (var (name, anim) in resFile.SkeletalAnims) {
                         var animation = new Animation();
 
                         animation.name = name;
@@ -931,10 +1078,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            Key<Vec3> posKey = new Key<Vec3>();
-                                            posKey.Time = frame.Key/anim.FrameCount;
-                                            posKey.Value.X = ((HermiteKey)frame.Value).Value;
-                                            channel.PositionKeys.Add(posKey);
+                                            Key<Vec3> posKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
+                                            channel.Positions.Add(posKey);
                                         }
                                     }
 
@@ -942,10 +1087,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            VectorKey posKey = new VectorKey();
-                                            posKey.Time = frame.Key/anim.FrameCount;
-                                            posKey.Value.Y = ((HermiteKey)frame.Value).Value;
-                                            channel.PositionKeys.Add(posKey);
+                                            Key<Vec3> posKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
+                                            channel.Positions.Add(posKey);
                                         }
                                     }
 
@@ -953,10 +1096,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            VectorKey posKey = new VectorKey();
-                                            posKey.Time = frame.Key/anim.FrameCount;
-                                            posKey.Value.Z = ((HermiteKey)frame.Value).Value;
-                                            channel.PositionKeys.Add(posKey);
+                                            Key<Vec3> posKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
+                                            channel.Positions.Add(posKey);
                                         }
                                     }
 
@@ -964,10 +1105,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            QuaternionKey posKey = new QuaternionKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.X = ((HermiteKey)frame.Value).Value;
-                                            channel.RotationKeys.Add(posKey);
+                                            Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 0));
+                                            channel.Rotations.Add(rotKey);
                                         }
                                     }
 
@@ -975,10 +1114,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            QuaternionKey posKey = new QuaternionKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.Y = ((HermiteKey)frame.Value).Value;
-                                            channel.RotationKeys.Add(posKey);
+                                            Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 0));
+                                            channel.Rotations.Add(rotKey);
                                         }
                                     }
 
@@ -986,10 +1123,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            QuaternionKey posKey = new QuaternionKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.Z = ((HermiteKey)frame.Value).Value;
-                                            channel.RotationKeys.Add(posKey);
+                                            Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 0));
+                                            channel.Rotations.Add(rotKey);
                                         }
                                     }
 
@@ -997,10 +1132,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            QuaternionKey posKey = new QuaternionKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.W = ((HermiteKey)frame.Value).Value;
-                                            channel.RotationKeys.Add(posKey);
+                                            Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(0, 0, 0, ((HermiteKey)frame.Value).Value));
+                                            channel.Rotations.Add(rotKey);
                                         }
                                     }
 
@@ -1008,10 +1141,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            VectorKey posKey = new VectorKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.X = ((HermiteKey)frame.Value).Value;
-                                            channel.ScalingKeys.Add(posKey);
+                                            Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
+                                            channel.Scales.Add(scaleKey);
                                         }
                                     }
 
@@ -1019,10 +1150,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            VectorKey posKey = new VectorKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.Y = ((HermiteKey)frame.Value).Value;
-                                            channel.ScalingKeys.Add(posKey);
+                                            Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
+                                            channel.Scales.Add(scaleKey);
                                         }
                                     }
 
@@ -1030,10 +1159,8 @@ namespace tmdl_utility
                                         CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
                                         foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                                         {
-                                            VectorKey posKey = new VectorKey();
-                                            posKey.Time = frame.Key / anim.FrameCount;
-                                            posKey.Value.Z = ((HermiteKey)frame.Value).Value;
-                                            channel.ScalingKeys.Add(posKey);
+                                            Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
+                                            channel.Scales.Add(scaleKey);
                                         }
                                     }
 
@@ -1051,8 +1178,8 @@ namespace tmdl_utility
                         var matList = new List<Material>();
                         var mlist = new List<Mesh>();
 
-                        var rootNode = new Node()
-                        rootNode.name = resfileModel.name;
+                        var rootNode = new Node();
+                        rootNode.name = resfileModel.Name;
                         rootNode.id = nct++;
 
                         var armatureNode = new Node("Armature");
@@ -1069,9 +1196,9 @@ namespace tmdl_utility
                             boneDict.Add(bone, bNode);
                         }                        
 
-                        foreach (var [bone, node] in boneDict)
+                        foreach (var (bone, node) in boneDict)
                         {
-                            node.SetParent(boneDict[bone.ParentIndex]);
+                            node.SetParent(boneDict.Values.ToList()[bone.ParentIndex]);
                         }
 
                         foreach (var (s, shape) in resfileModel.Shapes)
@@ -1105,7 +1232,7 @@ namespace tmdl_utility
                             var node = new Node();
                             node.name = shape.Name;
 
-                            node.Meshes = new List<int>{mshCt}
+                            node.Meshes = new List<int> { mshCt };
 
                             mlist.Add(mesh);
                         }
@@ -1132,7 +1259,7 @@ namespace tmdl_utility
                         model.Textures = textures;
                         model.Skeleton = new Skeleton(armatureNode);
 
-                        scene.Models.Add(model);
+                        scene.models.Add(model);
                     }
 
                     #endregion
@@ -1179,8 +1306,6 @@ namespace tmdl_utility
 
                     mscene.rootNode = ProcessAiNode(scene.RootNode);
 
-                    //var armatureNode = mscene.rootNode.AddNode("Armature");
-
 #region Assimp Models
 
                     var boneDict = new Dictionary<string, Assimp.Bone>();
@@ -1215,7 +1340,7 @@ namespace tmdl_utility
                             foreach (var (vertexId, weight) in bone.VertexWeights)
                             {
                                 boneIndices[vertexId].Add(boneId);
-                                boneWeights[vertexId].Add(we6ight);
+                                boneWeights[vertexId].Add(weight);
                             }
                         }
 
@@ -1269,7 +1394,20 @@ namespace tmdl_utility
                         
                     }
 
-                    model.Skeleton = new Skeleton(mscene.RootNode);
+                    model.Skeleton = new Skeleton(mscene.GetNode(boneDict.Keys.ToList()[0]));
+
+                    foreach (var skeletonBone in model.Skeleton.bones)
+                    {
+                        mscene.RemoveNode(skeletonBone.name);
+                    }
+
+                    var snode = model.Skeleton.ToNode();
+
+                    var armatureNode = mscene.rootNode.AddNode("Armature");
+                    armatureNode.IsBone = true;
+                    armatureNode.AddNode(snode);
+
+                    mscene.rootNode.AddNode(armatureNode);
 
                     model.Textures = new Texture[scene.TextureCount];
 
@@ -1323,9 +1461,15 @@ namespace tmdl_utility
                     {
                         var material = new Material();
 
-                        foreach (var allMaterialTexture in sceneMaterial.GetAllMaterialTextures())
+                        if (model.Textures.Length > 0)
                         {
-                            material.Textures.Add(allMaterialTexture.TextureType.ToString(), model.Textures[allMaterialTexture.TextureIndex].name);
+                            var texs = sceneMaterial.GetAllMaterialTextures();
+
+                            foreach (var allMaterialTexture in texs)
+                            {
+                                material.Textures.Add(allMaterialTexture.TextureType.ToString(),
+                                    model.Textures[allMaterialTexture.TextureIndex].name);
+                            }
                         }
 
                         material.name = sceneMaterial.Name;
@@ -1344,7 +1488,7 @@ namespace tmdl_utility
                         model.Animations[scene.Animations.IndexOf(anim)] = animation;
                     }
 
-                    mscene.Models.Add(model);
+                    mscene.models.Add(model);
 
                     #endregion
 
@@ -1354,8 +1498,7 @@ namespace tmdl_utility
 
                     var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
 
-                    outStream.WriteString("TSCN");
-                    scene.Write(outStream);
+                    mscene.Write(outStream);
 
                     outStream.Close();
 
