@@ -1339,12 +1339,13 @@ namespace tmdl_utility
                             int boneId = sceneMesh.Bones.IndexOf(bone);
                             foreach (var (vertexId, weight) in bone.VertexWeights)
                             {
+                                if (boneIndices[vertexId].Count >= 4)
+                                    continue;
+
                                 boneIndices[vertexId].Add(boneId);
                                 boneWeights[vertexId].Add(weight);
                             }
                         }
-
-
 
                         for (var i = 0; i < boneWeights.Length; i++)
                         {
