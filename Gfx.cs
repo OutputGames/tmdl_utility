@@ -1,3 +1,6 @@
+using System.Drawing;
+using System.Drawing.Imaging;
+
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -23,6 +26,29 @@ public partial class ModelUtility
         public byte[] data;
         public int channelCount;
         public string name;
+
+        public void Export(string path)
+        {
+            Bitmap b = new Bitmap(width, height);
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    byte[] c = new byte[4];
+                    for (int i = 0; i < channelCount; i++)
+                    {
+                        var data = this.data[
+                            (x + y * width) * channelCount + i];
+                        c[i] = data;
+                    }
+
+                    b.SetPixel(x, y, Color.FromArgb(c[3], c[0], c[1], c[2]));
+                }
+            }
+
+            b.Save(path, ImageFormat.Png);
+        }
     }
 
     public class Material

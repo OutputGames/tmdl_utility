@@ -60,7 +60,7 @@ namespace tmdl_utility
                 }
                 else
                 {
-                    scn.Export(info.Dest + Path.GetFileNameWithoutExtension(info.Source), "fbx");
+                    scn.Export(info.Dest + "/TMDL_Squid/" + Path.GetFileNameWithoutExtension(info.Source), "fbx");
                 }
 
             }
