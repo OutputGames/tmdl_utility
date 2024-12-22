@@ -74,9 +74,57 @@ public class BfresImporter
             animation.duration = anim.FrameCount;
             animation.ticksPerSecond = 60;
 
+            int jk = 0;
+            foreach (var resFileModel in resFile.Models)
+            {
+                if (resFileModel.Value.Skeleton == anim.BindSkeleton)
+                {
+                    animation.assignedModel = jk;
+                    break;
+                }
+                jk++;
+            }
+
+            if (animation.assignedModel == -1)
+            {
+                animation.assignedModel = 0;
+            }
+
             foreach (var boneAnim in anim.BoneAnims)
             {
                 ExtractAnimation(boneAnim, anim, out var channel, out var basePos, out var baseRot, out var baseScl);
+
+                channel.Positions.Add(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
+
+                channel.Rotations.Add(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
+                channel.Scales.Add(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Scale)));
+
+                if (boneAnim.ApplyScaleOne)
+                {
+                    channel.Scales.Clear();
+                    channel.Scales.Add(new Key<Vec3>(0, new Vec3(1)));
+                }
+                if (boneAnim.ApplyScaleOne)
+                {
+                    channel.Positions.Clear();
+                    channel.Positions.Add(new Key<Vec3>(0, new Vec3(0)));
+                }
+
+                if (boneAnim.ApplyRotateZero)
+                {
+                    channel.Rotations.Clear();
+                    channel.Rotations.Add(new Key<Vec4>(0, new Vec4(0.0f)));
+                }
+
+                if (boneAnim.ApplyIdentity)
+                {
+                    channel.Rotations.Clear();
+                    channel.Rotations.Add(new Key<Vec4>(0, new Vec4(0.0f)));
+                    channel.Positions.Clear();
+                    channel.Positions.Add(new Key<Vec3>(0, new Vec3(0)));
+                    channel.Scales.Clear();
+                    channel.Scales.Add(new Key<Vec3>(0, new Vec3(1)));
+                }
 
                 foreach (var sceneModel in scene.models)
                 {
@@ -90,7 +138,22 @@ public class BfresImporter
 
                 if (channel.Positions.Count > 0 || channel.Rotations.Count > 0 || channel.Scales.Count > 0)
                 {
+                    if (anim.FlagsRotate == SkeletalAnimFlagsRotate.EulerXYZ)
+                    {
+                        foreach (var channelRotation in channel.Rotations)
+                        {
+                            var euler = channelRotation.value.ToVec3();
+
+                            var val = new Vec4(euler);
+                            channelRotation.value = val;
+                        }
+                    }
+
                     animation.nodeChannels.Add(channel.NodeName, channel);
+                }
+                else
+                {
+                    Console.WriteLine($"Channel: {channel.NodeName} of {anim.Name} is invalid.");
                 }
             }
 
@@ -99,7 +162,16 @@ public class BfresImporter
 
         foreach (var sceneModel in scene.models)
         {
-            sceneModel.Animations = animations.ToArray();
+            List<Animation> anims = new List<Animation>();
+
+            var idx = scene.models.IndexOf(sceneModel);
+            foreach (var animation in animations)
+            {
+                if (animation.assignedModel == idx)
+                    anims.Add(animation);
+            }
+
+            sceneModel.Animations = anims.ToArray();
         }
 
         var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
@@ -143,7 +215,15 @@ public class BfresImporter
             var bNode = new Node(bone.Name);
 
             bNode.Position = new Vec3(bone.Position.X, bone.Position.Y, bone.Position.Z);
-            bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+            if (bone.FlagsRotation != BoneFlagsRotation.EulerXYZ)
+            {
+                bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+            }
+            else
+            {
+                bNode.Rotation = new Vec4(new Vec3(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z));
+            }
+
             bNode.Scale = new Vec3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z);
 
             boneDict.Add(bone, bNode);
@@ -193,6 +273,17 @@ public class BfresImporter
             }
             mesh.VertexWeights = wghts.ToArray();
 
+            if (id0.Length == 0)
+            {
+                mesh.BoneIDs = new int[mesh.Vertices.Length][];
+                mesh.VertexWeights = new float[mesh.Vertices.Length][];
+                for (int i = 0; i < mesh.BoneIDs.Length; i++)
+                {
+                    mesh.BoneIDs[i] = new[] { 1, -1, -1, -1 };
+                    mesh.VertexWeights[i] = new[] { 1.0f, 0,0, 0 };
+                }
+            }
+
             mesh.Indices = new ushort[shapeMesh.IndexCount];
 
             var idxs = GetDisplayFaces(shapeMesh.GetIndices().ToList());
@@ -229,7 +320,22 @@ public class BfresImporter
 
         model.Meshes = mlist.ToArray();
         model.Textures = textures;
-        model.Skeleton = new ModelUtility.Skeleton(armatureNode);
+        model.Skeleton = new ModelUtility.Skeleton(armatureNode.children[0]);
+
+        foreach (var skeletonBone in model.Skeleton.bones)
+        {
+            var idx = model.Skeleton.bones.IndexOf(skeletonBone);
+            var bone = resfileModel.Skeleton.Bones[idx];
+
+            if (resfileModel.Skeleton.NumSmoothMatrices > 0 && bone.SmoothMatrixIndex > -1)
+            {
+                var mat = resfileModel.Skeleton.InverseModelMatrices;
+
+                skeletonBone.offsetMatrix = mat[bone.SmoothMatrixIndex].ConvertMatrix3x4();
+            }
+            skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
+        }
+
         model.Materials = matList.ToArray();
 
         scene.models.Add(model);

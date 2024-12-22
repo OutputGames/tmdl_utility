@@ -1,3 +1,7 @@
+using System.Numerics;
+using Syroot.Maths;
+using Vector3 = System.Numerics.Vector3;
+
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -6,14 +10,44 @@ public partial class ModelUtility
     {
         public string name;
         public Vec3 Position = new Vec3();
-        public Vec4 Rotation = new Vec4();
+        public Vec4 Rotation = new Vec4(0,0,0,1);
         public Vec3 Scale = new Vec3(1);
+        public Matrix4x4 offsetMatrix = Matrix4x4.Identity;
         public Node node;
         public int id = -1;
 
 
         public Bone parent;
         public List<Bone> children = new List<Bone>();
+
+        public static Matrix4x4 CalculateTransformMatrix(Bone bone)
+        {
+            var trans = Matrix4x4.CreateTranslation(new Vector3(bone.Position.X, bone.Position.Y, bone.Position.Z));
+            var scale = Matrix4x4.CreateScale(new Vector3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z));
+
+            Matrix4x4 quat = Matrix4x4.Identity;
+
+            quat = Matrix4x4.CreateFromQuaternion(new Quaternion(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z,
+                bone.Rotation.W));
+
+            return Matrix4x4.Multiply(quat, trans);
+        }
+
+        public static (Matrix4x4, Matrix4x4) CalculateOffsetMatrix(Bone bone)
+        {
+            var mat = Matrix4x4.Identity;
+
+            if (bone.parent != null)
+            {
+                mat *= CalculateOffsetMatrix(bone.parent).Item1;
+            }
+
+            mat *= CalculateTransformMatrix(bone);
+
+            Matrix4x4.Invert(mat, out Matrix4x4 inverse);
+
+            return (mat, inverse);
+        }
 
         public void SetParent(Bone b)
         {
@@ -38,6 +72,14 @@ public partial class ModelUtility
             Position.Write(writer);
             Rotation.Write(writer);
             Scale.Write(writer);
+
+            for (int i = 0; i < 4; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    writer.Write(offsetMatrix[i,j]);
+                }
+            }
         }
 
         public Bone(Node node)
@@ -62,6 +104,8 @@ public partial class ModelUtility
     {
         public List<Bone> bones = new List<Bone>();
         public string rootName;
+
+        
 
         public void Write(ModelWriter writer)
         {
@@ -183,6 +227,7 @@ public partial class ModelUtility
         public float duration;
         public int ticksPerSecond;
         public string name;
+        public int assignedModel = -1;
 
         public Animation()
         {

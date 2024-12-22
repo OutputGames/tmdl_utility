@@ -6,7 +6,7 @@ public partial class ModelUtility
     {
         public string name;
         public Vec3 Position = new Vec3();
-        public Vec4 Rotation = new Vec4();
+        public Vec4 Rotation = new Vec4(0,0,0,1);
         public Vec3 Scale = new Vec3(1);
 
         public List<int> Meshes = new List<int>();

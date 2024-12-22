@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -26,6 +28,14 @@ public partial class ModelUtility
             W = v.W;
         }
 
+        public Vec4(float s)
+        {
+            X = s;
+            Y = s;
+            Z = s;
+            W = 1.0f;
+        }
+
         public Vec4(System.Numerics.Quaternion v)
         {
             X = v.X;
@@ -40,6 +50,25 @@ public partial class ModelUtility
             Y = v.Y;
             Z = v.Z;
             W = v.W;
+        }
+
+        public Vec4(Vec3 euler)
+        {
+            var yaw = euler.Y;
+            var pitch = euler.X;
+            var roll = euler.Z; 
+
+            double cy = Math.Cos(yaw * 0.5);
+            double sy = Math.Sin(yaw * 0.5);
+            double cp = Math.Cos(pitch * 0.5);
+            double sp = Math.Sin(pitch * 0.5);
+            double cr = Math.Cos(roll * 0.5);
+            double sr = Math.Sin(roll * 0.5);
+
+            W = (float)(cr * cp * cy + sr * sp * sy);
+            X = (float)(sr * cp * cy - cr * sp * sy);
+            Y = (float)(cr * sp * cy + sr * cp * sy);
+            Z = (float)(cr * cp * sy - sr * sp * cy);
         }
 
 
