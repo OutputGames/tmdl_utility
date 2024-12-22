@@ -1,4 +1,5 @@
 using System.Numerics;
+using Syroot.NintenTools.NSW.Bntx.Core;
 
 namespace tmdl_utility;
 
@@ -275,6 +276,9 @@ public partial class ModelUtility
     {
         public float X, Y;
 
+        public static implicit operator Vector2(Vec2 d) => new Vector2(d.X, d.Y);
+        public static implicit operator Vector3(Vec2 d) => new Vector3(d.X, d.Y,0);
+        public static implicit operator Vec2(Vector2 d) => new Vec2(d.X, d.Y);
         public Vec2(float x, float y)
         {
             X = x;

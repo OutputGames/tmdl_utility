@@ -8,7 +8,7 @@ namespace tmdl_utility;
 
 public class AssimpImporter
 {
-    public static void LoadAssimp(UtilityInitInfo info)
+    public static ModelUtility.Scene LoadAssimp(UtilityInitInfo info)
     {
         var importer = new AssimpContext();
         //importer.SetConfig();
@@ -228,23 +228,7 @@ public class AssimpImporter
 
         #endregion
 
-        var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
-
-        outPath = Path.GetFullPath(outPath);
-
-        var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
-
-        mscene.Write(outStream);
-
-        outStream.Close();
-
-
-        var startInfo = new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\TomatoEditor\\bin\\Debug\\TomatoEditor.exe\"");
-
-        startInfo.WorkingDirectory = "D:\\Code\\ImportantRepos\\TomatoEditor";
-        startInfo.ArgumentList.Add($"{outPath}");
-
-        var proc = System.Diagnostics.Process.Start(startInfo);
+        return mscene;
     }
 
     public static ModelUtility.Node ProcessAiNode(Assimp.Node ai, int count = -1, bool isBone = false)
