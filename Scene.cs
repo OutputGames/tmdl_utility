@@ -65,7 +65,7 @@ public partial class ModelUtility
                 writer.Write(idx);
             }
 
-            writer.Write(IsBone);
+            writer.Write(IsBone? 0 : 1);
 
             writer.Write(children.Count);
             foreach (var child in children)
