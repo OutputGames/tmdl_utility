@@ -47,6 +47,7 @@ public class BfresImporter
             (nct, mdl, arm) = ExtractModel(resfileModel, nct, resFile, textures, scene, ref mshCt);
 
             var node = new Node("TMDL_" + key);
+            mdl.Name = node.name;
 
             for (var i = 0; i < mdl.Meshes.Length; i++)
             {
@@ -71,6 +72,7 @@ public class BfresImporter
 
             animation.name = name;
             animation.duration = anim.FrameCount;
+            animation.ticksPerSecond = 60;
 
             foreach (var boneAnim in anim.BoneAnims)
             {
@@ -86,7 +88,10 @@ public class BfresImporter
                     }
                 }
 
-                animation.nodeChannels.Add(channel.NodeName, channel);
+                if (channel.Positions.Count > 0 || channel.Rotations.Count > 0 || channel.Scales.Count > 0)
+                {
+                    animation.nodeChannels.Add(channel.NodeName, channel);
+                }
             }
 
             animations.Add(animation);
@@ -344,7 +349,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
+                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
                         channel.AddPosition(posKey);
                     }
                 }
@@ -353,7 +358,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
+                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
                         channel.AddPosition(posKey);
                     }
                 }
@@ -362,7 +367,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
+                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
                         channel.AddPosition(posKey);
                     }
                 }
@@ -371,7 +376,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 0));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 0));
                         channel.AddRotation(rotKey);
                     }
                 }
@@ -380,7 +385,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 0));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 0));
                         channel.AddRotation(rotKey);
                     }
                 }
@@ -389,7 +394,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 0));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 0));
                         channel.AddRotation(rotKey);
                     }
                 }
@@ -398,7 +403,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key / anim.FrameCount, new Vec4(0, 0, 0, ((HermiteKey)frame.Value).Value));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, 0, 0, ((HermiteKey)frame.Value).Value));
                         channel.AddRotation(rotKey);
                     }
                 }
@@ -407,7 +412,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
+                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
                         channel.AddScale(scaleKey);
                     }
                 }
@@ -416,7 +421,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
+                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
                         channel.AddScale(scaleKey);
                     }
                 }
@@ -425,12 +430,17 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key / anim.FrameCount, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
+                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
                         channel.AddScale(scaleKey);
                     }
                 }
 
             }
+
+            // Sort keys by time
+            channel.Positions.Sort((a, b) => a.Time.CompareTo(b.Time));
+            channel.Rotations.Sort((a, b) => a.Time.CompareTo(b.Time));
+            channel.Scales.Sort((a, b) => a.Time.CompareTo(b.Time));
         }
     }
 
