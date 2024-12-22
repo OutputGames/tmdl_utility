@@ -52,6 +52,38 @@ public partial class ModelUtility
             W = v.W;
         }
 
+        public static Vec4 operator *(Vec4 value1, Quaternion value2)
+        {
+            Vec4 ans = new Vec4();
+
+            float q1x = value1.X;
+            float q1y = value1.Y;
+            float q1z = value1.Z;
+            float q1w = value1.W;
+
+            float q2x = value2.X;
+            float q2y = value2.Y;
+            float q2z = value2.Z;
+            float q2w = value2.W;
+
+            // cross(av, bv)
+            float cx = q1y * q2z - q1z * q2y;
+            float cy = q1z * q2x - q1x * q2z;
+            float cz = q1x * q2y - q1y * q2x;
+
+            float dot = q1x * q2x + q1y * q2y + q1z * q2z;
+
+            ans.X = q1x * q2w + q2x * q1w + cx;
+            ans.Y = q1y * q2w + q2y * q1w + cy;
+            ans.Z = q1z * q2w + q2z * q1w + cz;
+            ans.W = q1w * q2w - dot;
+
+            return ans;
+        }
+
+        public static implicit operator Quaternion(Vec4 d) => new Quaternion(d.X, d.Y, d.Z, d.W);
+        public static implicit operator Vec4(Quaternion d) => new Vec4(d.X, d.Y, d.Z, d.W);
+
         public Vec4(Vec3 euler)
         {
             var yaw = euler.Y;
@@ -191,6 +223,9 @@ public partial class ModelUtility
             Y = v.Y;
             Z = v.Z;
         }
+
+        public static implicit operator Vector3(Vec3 d) => new Vector3(d.X,d.Y,d.Z);
+        public static implicit operator Vec3(Vector3 d) => new Vec3(d.X, d.Y, d.Z);
 
         public void Write(ModelWriter writer)
         {
