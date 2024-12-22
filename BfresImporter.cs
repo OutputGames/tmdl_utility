@@ -333,7 +333,7 @@ public class BfresImporter
 
                 skeletonBone.offsetMatrix = mat[bone.SmoothMatrixIndex].ConvertMatrix3x4();
             }
-            skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
+            //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }
 
         model.Materials = matList.ToArray();
@@ -482,7 +482,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 0));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 1));
                         channel.AddRotation(rotKey);
                     }
                 }
@@ -491,7 +491,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 0));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 1));
                         channel.AddRotation(rotKey);
                     }
                 }
@@ -500,7 +500,7 @@ public class BfresImporter
                     CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 0));
+                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 1));
                         channel.AddRotation(rotKey);
                     }
                 }

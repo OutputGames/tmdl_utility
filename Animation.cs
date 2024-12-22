@@ -22,15 +22,9 @@ public partial class ModelUtility
 
         public static Matrix4x4 CalculateTransformMatrix(Bone bone)
         {
-            var trans = Matrix4x4.CreateTranslation(new Vector3(bone.Position.X, bone.Position.Y, bone.Position.Z));
-            var scale = Matrix4x4.CreateScale(new Vector3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z));
-
-            Matrix4x4 quat = Matrix4x4.Identity;
-
-            quat = Matrix4x4.CreateFromQuaternion(new Quaternion(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z,
-                bone.Rotation.W));
-
-            return Matrix4x4.Multiply(quat, trans);
+            return Matrix4x4.CreateScale(bone.Scale) *
+                   Matrix4x4.CreateFromQuaternion(bone.Rotation) *
+                   Matrix4x4.CreateTranslation(bone.Scale);
         }
 
         public static (Matrix4x4, Matrix4x4) CalculateOffsetMatrix(Bone bone)
@@ -42,7 +36,7 @@ public partial class ModelUtility
                 mat *= CalculateOffsetMatrix(bone.parent).Item1;
             }
 
-            mat *= CalculateTransformMatrix(bone);
+            mat = Matrix4x4.Multiply(CalculateTransformMatrix(bone), mat);
 
             Matrix4x4.Invert(mat, out Matrix4x4 inverse);
 
@@ -200,7 +194,7 @@ public partial class ModelUtility
                 {
                     if (Math.Abs(rotation.timeStamp - r.timeStamp) < KeyToleration)
                     {
-                        rotation.value += r.value;
+                        rotation.value *= r.value;
                         return;
                     }
                 }
