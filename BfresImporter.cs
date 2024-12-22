@@ -12,7 +12,7 @@ namespace tmdl_utility;
 
 public class BfresImporter
 {
-    public static void LoadBfres(UtilityInitInfo info)
+    public static ModelUtility.Scene LoadBfres(UtilityInitInfo info)
     {
         MemoryStream stream = new MemoryStream();
         if (info.Source.EndsWith(".zs"))
@@ -174,23 +174,7 @@ public class BfresImporter
             sceneModel.Animations = anims.ToArray();
         }
 
-        var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
-
-        outPath = Path.GetFullPath(outPath);
-
-        var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
-
-        scene.Write(outStream);
-
-        outStream.Close();
-
-
-        var startInfo = new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\TomatoEditor\\bin\\Debug\\TomatoEditor.exe\"");
-
-        startInfo.WorkingDirectory = "D:\\Code\\ImportantRepos\\TomatoEditor";
-        startInfo.ArgumentList.Add($"{outPath}");
-
-        var proc = System.Diagnostics.Process.Start(startInfo);
+        return scene;
     }
 
     private static (int, ModelUtility.Model, Node) ExtractModel(Model resfileModel, int nct, ResFile resFile, Texture[] textures, Scene scene,

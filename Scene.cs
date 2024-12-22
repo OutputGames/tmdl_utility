@@ -1,3 +1,7 @@
+using System.Diagnostics;
+using System.Numerics;
+using Assimp;
+
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -22,6 +26,12 @@ public partial class ModelUtility
             this.name = name;
         }
 
+        public static Matrix4x4 CalculateTransformMatrix(Node bone)
+        {
+            return Matrix4x4.CreateScale(bone.Scale) *
+                   Matrix4x4.CreateFromQuaternion(bone.Rotation) *
+                   Matrix4x4.CreateTranslation(bone.Scale);
+        }
         public Node(Bone bone)
         {
             this.name = bone.name;
@@ -35,6 +45,22 @@ public partial class ModelUtility
                 var n = new Node(boneChild);
                 n.SetParent(this);
             }
+        }
+
+        public Assimp.Node ToAiNode()
+        {
+            var ai = new Assimp.Node(name);
+
+            ai.Transform = CalculateTransformMatrix(this);
+            ai.MeshIndices.AddRange(Meshes);
+
+            foreach (var child in children)
+            {
+                ai.Children.Add(child.ToAiNode());
+            }
+
+
+            return ai;
         }
 
         public void SetParent(Node n)
@@ -164,6 +190,76 @@ public partial class ModelUtility
                 model.Write(writer);
             }
         }
+
+        public void Export(string path, string format)
+        {
+            path += "." + format;
+
+            Assimp.AssimpContext ctx = new AssimpContext();
+
+            var ascn = new Assimp.Scene();
+
+            ascn.Name = name;
+            ascn.RootNode = rootNode.ToAiNode();
+
+            foreach (var model in models)
+            {
+                foreach (var modelMesh in model.Meshes)
+                {
+                    var mesh = new Assimp.Mesh();
+                    mesh.Name = modelMesh.Name;
+                    mesh.MaterialIndex = modelMesh.MaterialIndex;
+                    for (var i = 0; i < modelMesh.Vertices.Length; i++)
+                    {
+                        mesh.Vertices.Add(modelMesh.Vertices[i]);
+                        mesh.Normals.Add(modelMesh.Normals[i]);
+                        //mesh.TextureCoordinateChannels[0].Add(modelMesh.UV0[i]);
+                    }
+
+                    var idxs = new List<int>();
+
+                    foreach (var modelMeshIndex in modelMesh.Indices)
+                    {
+                        idxs.Add(modelMeshIndex);
+                    }
+
+                    mesh.SetIndices(idxs.ToArray(), 3);
+
+                    ascn.Meshes.Add(mesh);
+                }
+
+                foreach (var modelMaterial in model.Materials)
+                {
+                    var material = new Assimp.Material();
+
+                    material.Name = modelMaterial.name;
+
+                    ascn.Materials.Add(material);
+                }
+            }
+
+
+            ctx.ExportFile(ascn, path, format);
+
+            var startInfo = new ProcessStartInfo("\"C:\\Program Files\\Assimp\\bin\\x64\\assimp_viewer.exe\"");
+
+            Process[] runningProcesses = Process.GetProcesses();
+            foreach (Process process in runningProcesses)
+            {
+                if (process.ProcessName == Path.GetFileNameWithoutExtension(startInfo.FileName) &&
+                    process.MainModule != null &&
+                    string.Compare(process.MainModule.FileName, startInfo.FileName, StringComparison.InvariantCultureIgnoreCase) == 0)
+                {
+                    process.Kill();
+                }
+            }
+
+            startInfo.ArgumentList.Add($"{path}");
+
+            var proc = System.Diagnostics.Process.Start(startInfo);
+
+        }
+
 
         public bool RemoveNode(string name)
         {
