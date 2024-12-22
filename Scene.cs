@@ -228,11 +228,104 @@ public partial class ModelUtility
                     ascn.Meshes.Add(mesh);
                 }
 
+                foreach (var modelTexture in model.Textures)
+                {
+
+                    List<Texel> texels = new List<Texel>();
+
+                    for (int x = 0; x < modelTexture.width; x++)
+                    {
+                        for (int y = 0; y < modelTexture.height; y++)
+                        {
+                            var texel = new Texel();
+
+                            for (int i = 0; i < modelTexture.channelCount; i++)
+                            {
+                                var data = modelTexture.data[
+                                    (x + y * modelTexture.width) * modelTexture.channelCount + i];
+                                if (i == 0)
+                                    texel.R = data;
+                                else if (i == 1)
+                                    texel.G = data;
+                                else if (i == 2)
+                                    texel.B = data;
+                                else if (i == 3)
+                                    texel.A = data;
+                            }
+
+                            texels.Add(texel);
+                        }
+                    }
+
+                    var texture = new Assimp.EmbeddedTexture(modelTexture.width, modelTexture.height, texels.ToArray(),
+                        ConvertToFilePath(modelTexture.name));
+
+                    ascn.Textures.Add(texture);
+                }
+
+                string ConvertToFilePath(string t)
+                {
+                    var p = t + ".png";
+
+                    return p;
+                }
+
                 foreach (var modelMaterial in model.Materials)
                 {
                     var material = new Assimp.Material();
 
                     material.Name = modelMaterial.name;
+
+                    TextureSlot ConvertToTextureSlot(string p, string type)
+                    {
+                        var textureType = TextureType.None;
+                        var fpath = ConvertToFilePath(p);
+
+                        Dictionary<string, TextureType> samplerTypes = new Dictionary<string, TextureType>()
+                        {
+                            {"_a0",TextureType.Diffuse},
+                            {"_r0", TextureType.Roughness},
+                            {"_op0", TextureType.Opacity},
+                            {"a0",TextureType.Diffuse},
+                            {"o0", TextureType.Opacity},
+                            {"_o0", TextureType.Opacity},
+                            {"_e0", TextureType.Emissive},
+                            {"_n0", TextureType.Normals},
+                            {"_ao0", TextureType.Ambient},
+                            {"_m0", TextureType.Reflection},
+                            {"n0", TextureType.Normals},
+                            //{"sampler0", TextureType.Emissive},
+                            //{"_fm0", TextureType.Emissive},
+
+                        };
+
+                        if (samplerTypes.ContainsKey(type))
+                        {
+                            textureType = samplerTypes[type];
+                        }
+
+                        Texture tex = null;
+                        foreach (var modelTexture in model.Textures)
+                        {
+                            if (modelTexture.name == p)
+                            {
+                                tex = modelTexture;
+                                break;
+                            }
+                        }
+
+                        if (tex != null)
+                        {
+                            tex.Export(Path.GetDirectoryName(path) + "\\" + fpath);
+                        }
+
+                        return new TextureSlot(fpath, textureType, 0, TextureMapping.FromUV, 0, 1, TextureOperation.Add, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 0);
+                    }
+
+                    foreach (var (key, value) in modelMaterial.Textures)
+                    {
+                        material.AddMaterialTexture(ConvertToTextureSlot(value, key));
+                    }
 
                     ascn.Materials.Add(material);
                 }
