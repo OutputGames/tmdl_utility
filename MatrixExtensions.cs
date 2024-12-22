@@ -1,4 +1,6 @@
 using System.Numerics;
+using Syroot.Maths;
+using Vector3 = System.Numerics.Vector3;
 
 public static class MatrixExtensions
 {
@@ -24,5 +26,20 @@ public static class MatrixExtensions
 
         // Extract rotation
         rotation = Quaternion.CreateFromRotationMatrix(normalizedMatrix);
+    }
+
+    public static Matrix4x4 ConvertMatrix3x4(this Matrix3x4 mat)
+    {
+        Matrix4x4 m = Matrix4x4.Identity;
+
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                m[i, j] = mat[i, j];
+            }
+        }
+
+        return m;
     }
 }
