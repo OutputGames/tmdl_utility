@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\tmdl_utility\\test\\ttest.glb\" \"out/\"",
+      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\tmdl_utility\\test\\Player00.bfres.zs\" \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }

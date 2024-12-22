@@ -20,6 +20,30 @@ public static class Utils
         return v;
     }
 
+    public static int[] ToArray(this ModelUtility.Vec4 v)
+    {
+        int[] i = new int[4];
+
+        for (int j = 0; j < 4; j++)
+        {
+            i[j] = (int)v[j];
+        }
+
+        return i;
+    }
+
+    public static float[] ToFltArray(this ModelUtility.Vec4 v)
+    {
+        float[] i = new float[4];
+
+        for (int j = 0; j < 4; j++)
+        {
+            i[j] = v[j];
+        }
+
+        return i;
+    }
+
     public static ModelUtility.Vec2[] ToVec2Array(this ModelUtility.Vec4[] a, int start = 0, int count = -1)
     {
         if (count == -1)
