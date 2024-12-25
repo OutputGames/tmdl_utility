@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\tmdl_utility\\test\\Player_Squid.bfres.zs\" \"out/\"",
+      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\tmdl_utility\\test\\plr.glb\" \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }

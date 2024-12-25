@@ -44,7 +44,7 @@ namespace tmdl_utility
                     scn = AssimpImporter.LoadAssimp(info);
                 }
 
-                bool export = true;
+                bool export = false;
 
                 if (!export)
                 {

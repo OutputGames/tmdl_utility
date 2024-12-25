@@ -285,23 +285,4 @@ public partial class ModelUtility
             Y = y;
         }
     }
-
-    public class Key<T>
-    {
-        public float timeStamp;
-
-        public T value;
-
-        public float Time
-        {
-            get { return timeStamp; }
-            set { timeStamp = value; }
-        }
-
-        public Key(float time, T val)
-        {
-            this.timeStamp = time;
-            this.value = val;
-        }
-    }
 }
