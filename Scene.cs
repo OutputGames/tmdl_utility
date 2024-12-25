@@ -213,7 +213,7 @@ public partial class ModelUtility
                     {
                         mesh.Vertices.Add(modelMesh.Vertices[i]);
                         mesh.Normals.Add(modelMesh.Normals[i]);
-                        //mesh.TextureCoordinateChannels[0].Add(modelMesh.UV0[i]);
+                        mesh.TextureCoordinateChannels[0].Add(modelMesh.UV0[i]);
                     }
 
                     var idxs = new List<int>();

@@ -6,6 +6,25 @@ namespace tmdl_utility;
 
 public partial class ModelUtility
 {
+    public class Key<T>
+    {
+        public float timeStamp;
+
+        public T value;
+
+        public float Time
+        {
+            get { return timeStamp; }
+            set { timeStamp = value; }
+        }
+
+        public Key(float time, T val)
+        {
+            this.timeStamp = time;
+            this.value = val;
+        }
+    }
+
     public class Bone
     {
         public string name;
@@ -73,6 +92,12 @@ public partial class ModelUtility
                 {
                     writer.Write(offsetMatrix[i,j]);
                 }
+            }
+
+            writer.Write(children.Count);
+            foreach (var child in children)
+            {
+                writer.WriteNonSigString(child.name);
             }
         }
 
