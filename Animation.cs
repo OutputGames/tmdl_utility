@@ -1,6 +1,4 @@
 using System.Numerics;
-using Syroot.Maths;
-using Vector3 = System.Numerics.Vector3;
 
 namespace tmdl_utility;
 
@@ -12,32 +10,49 @@ public partial class ModelUtility
 
         public T value;
 
-        public float Time
-        {
-            get { return timeStamp; }
-            set { timeStamp = value; }
-        }
-
         public Key(float time, T val)
         {
-            this.timeStamp = time;
-            this.value = val;
+            timeStamp = time;
+            value = val;
+        }
+
+        public float Time
+        {
+            get => timeStamp;
+            set => timeStamp = value;
         }
     }
 
     public class Bone
     {
-        public string name;
-        public Vec3 Position = new Vec3();
-        public Vec4 Rotation = new Vec4(0,0,0,1);
-        public Vec3 Scale = new Vec3(1);
-        public Matrix4x4 offsetMatrix = Matrix4x4.Identity;
-        public Node node;
+        public List<Bone> children = new();
         public int id = -1;
+        public string name;
+        public Node node;
+        public Matrix4x4 offsetMatrix = Matrix4x4.Identity;
 
 
         public Bone parent;
-        public List<Bone> children = new List<Bone>();
+        public Vec3 Position = new();
+        public Vec4 Rotation = new(0, 0, 0, 1);
+        public Vec3 Scale = new(1);
+
+        public Bone(Node node)
+        {
+            name = node.name;
+            id = node.id;
+            this.node = node;
+
+            Position = node.Position;
+            Rotation = node.Rotation;
+            Scale = node.Scale;
+
+            node.IsBone = true;
+        }
+
+        public Bone()
+        {
+        }
 
         public static Matrix4x4 CalculateTransformMatrix(Bone bone)
         {
@@ -50,14 +65,11 @@ public partial class ModelUtility
         {
             var mat = Matrix4x4.Identity;
 
-            if (bone.parent != null)
-            {
-                mat *= CalculateOffsetMatrix(bone.parent).Item1;
-            }
+            if (bone.parent != null) mat *= CalculateOffsetMatrix(bone.parent).Item1;
 
             mat = Matrix4x4.Multiply(CalculateTransformMatrix(bone), mat);
 
-            Matrix4x4.Invert(mat, out Matrix4x4 inverse);
+            Matrix4x4.Invert(mat, out var inverse);
 
             return (mat, inverse);
         }
@@ -86,75 +98,19 @@ public partial class ModelUtility
             Rotation.Write(writer);
             Scale.Write(writer);
 
-            for (int i = 0; i < 4; i++)
-            {
-                for (int j = 0; j < 4; j++)
-                {
-                    writer.Write(offsetMatrix[i,j]);
-                }
-            }
+            for (var i = 0; i < 3; i++)
+            for (var j = 0; j < 4; j++)
+                writer.Write(offsetMatrix[i, j]);
 
             writer.Write(children.Count);
-            foreach (var child in children)
-            {
-                writer.WriteNonSigString(child.name);
-            }
-        }
-
-        public Bone(Node node)
-        {
-            this.name = node.name;
-            this.id = node.id;
-            this.node = node;
-
-            this.Position = node.Position;
-            this.Rotation = node.Rotation;
-            this.Scale = node.Scale;
-
-            node.IsBone = true;
-        }
-
-        public Bone()
-        {
+            foreach (var child in children) writer.WriteNonSigString(child.name);
         }
     }
 
     public class Skeleton
     {
-        public List<Bone> bones = new List<Bone>();
+        public List<Bone> bones = new();
         public string rootName;
-
-        
-
-        public void Write(ModelWriter writer)
-        {
-            writer.Write(bones.Count);
-
-            foreach (var bone in bones)
-            {
-                bone.Write(writer);
-            }
-
-            writer.WriteNonSigString(rootName);
-        }
-
-        public Bone GetBone(string name)
-        {
-            foreach (var bone in bones)
-            {
-                if (bone.name == name)
-                    return bone;
-            }
-
-            return null;
-        }
-
-        public Node ToNode()
-        {
-            var rootNode = new Node(bones[0]);
-
-            return rootNode;
-        }
 
         public Skeleton(Node rootNode)
         {
@@ -184,69 +140,42 @@ public partial class ModelUtility
                 }
             }
         }
+
+
+        public void Write(ModelWriter writer)
+        {
+            writer.Write(bones.Count);
+
+            foreach (var bone in bones) bone.Write(writer);
+
+            writer.WriteNonSigString(rootName);
+        }
+
+        public Bone GetBone(string name)
+        {
+            foreach (var bone in bones)
+                if (bone.name == name)
+                    return bone;
+
+            return null;
+        }
+
+        public Node ToNode()
+        {
+            var rootNode = new Node(bones[0]);
+
+            return rootNode;
+        }
     }
 
     public class Animation
     {
-        public class NodeChannel
-        {
-            public string NodeName;
-            public Bone Bone;
-
-            public List<Key<Vec3>> Positions = new List<Key<Vec3>>();
-            public List<Key<Vec4>> Rotations = new List<Key<Vec4>>();
-            public List<Key<Vec3>> Scales = new List<Key<Vec3>>();
-
-            private const float KeyToleration = 0.01f;
-
-            public void AddPosition(Key<Vec3> p)
-            {
-                foreach (var position in Positions)
-                {
-                    if (Math.Abs(position.timeStamp - p.timeStamp) < KeyToleration)
-                    {
-                        position.value += p.value;
-                        return;
-                    }
-                }
-
-                Positions.Add(p);
-            }
-
-            public void AddRotation(Key<Vec4> r)
-            {
-                foreach (var rotation in Rotations)
-                {
-                    if (Math.Abs(rotation.timeStamp - r.timeStamp) < KeyToleration)
-                    {
-                        rotation.value *= r.value;
-                        return;
-                    }
-                }
-
-                Rotations.Add(r);
-            }
-
-            public void AddScale(Key<Vec3> s)
-            {
-                foreach (var scale in Scales)
-                {
-                    if (Math.Abs(scale.timeStamp - s.timeStamp) < KeyToleration)
-                    {
-                        scale.value += s.value;
-                        return;
-                    }
-                }
-
-                Scales.Add(s);
-            }
-        }
-
-        public Dictionary<string, NodeChannel> nodeChannels = new Dictionary<string, NodeChannel>();
-        public float duration;
-        public int ticksPerSecond;
-        public string name;
         public int assignedModel = -1;
+        public float duration;
+        public string name;
+
+        public Dictionary<string, NodeChannel> nodeChannels = new();
+        public int ticksPerSecond;
 
         public Animation()
         {
@@ -264,19 +193,13 @@ public partial class ModelUtility
                 channel.NodeName = ch.NodeName;
 
                 foreach (var pkey in ch.PositionKeys)
-                {
                     channel.Positions.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
-                }
 
                 foreach (var pkey in ch.RotationKeys)
-                {
                     channel.Rotations.Add(new Key<Vec4>((float)pkey.Time, new Vec4(pkey.Value)));
-                }
 
                 foreach (var pkey in ch.ScalingKeys)
-                {
                     channel.Scales.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
-                }
 
                 nodeChannels.Add(channel.NodeName, channel);
             }
@@ -284,10 +207,7 @@ public partial class ModelUtility
 
         public void ApplySkeleton(Skeleton skeleton)
         {
-            foreach (var (name, channel) in nodeChannels)
-            {
-                channel.Bone = skeleton.GetBone(name);
-            }
+            foreach (var (name, channel) in nodeChannels) channel.Bone = skeleton.GetBone(name);
         }
 
 
@@ -301,10 +221,8 @@ public partial class ModelUtility
 
             var channelCount = nodeChannels.Count;
             foreach (var keyValuePair in nodeChannels)
-            {
                 if (keyValuePair.Value.Bone == null)
                     channelCount--;
-            }
 
 
             writer.Write(channelCount);
@@ -339,6 +257,53 @@ public partial class ModelUtility
 
                     pkey.value.Write(writer);
                 }
+            }
+        }
+
+        public class NodeChannel
+        {
+            private const float KeyToleration = 0.01f;
+            public Bone Bone;
+            public string NodeName;
+
+            public List<Key<Vec3>> Positions = new();
+            public List<Key<Vec4>> Rotations = new();
+            public List<Key<Vec3>> Scales = new();
+
+            public void AddPosition(Key<Vec3> p)
+            {
+                foreach (var position in Positions)
+                    if (Math.Abs(position.timeStamp - p.timeStamp) < KeyToleration)
+                    {
+                        position.value += p.value;
+                        return;
+                    }
+
+                Positions.Add(p);
+            }
+
+            public void AddRotation(Key<Vec4> r)
+            {
+                foreach (var rotation in Rotations)
+                    if (Math.Abs(rotation.timeStamp - r.timeStamp) < KeyToleration)
+                    {
+                        rotation.value *= r.value;
+                        return;
+                    }
+
+                Rotations.Add(r);
+            }
+
+            public void AddScale(Key<Vec3> s)
+            {
+                foreach (var scale in Scales)
+                    if (Math.Abs(scale.timeStamp - s.timeStamp) < KeyToleration)
+                    {
+                        scale.value += s.value;
+                        return;
+                    }
+
+                Scales.Add(s);
             }
         }
     }

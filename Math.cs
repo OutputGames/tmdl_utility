@@ -1,5 +1,8 @@
 using System.Numerics;
-using Syroot.NintenTools.NSW.Bntx.Core;
+using Syroot.Maths;
+using Vector2 = System.Numerics.Vector2;
+using Vector3 = System.Numerics.Vector3;
+using Vector4 = System.Numerics.Vector4;
 
 namespace tmdl_utility;
 
@@ -21,7 +24,7 @@ public partial class ModelUtility
         {
         }
 
-        public Vec4(System.Numerics.Vector4 v)
+        public Vec4(Vector4 v)
         {
             X = v.X;
             Y = v.Y;
@@ -37,7 +40,7 @@ public partial class ModelUtility
             W = 1.0f;
         }
 
-        public Vec4(System.Numerics.Quaternion v)
+        public Vec4(Quaternion v)
         {
             X = v.X;
             Y = v.Y;
@@ -45,34 +48,109 @@ public partial class ModelUtility
             W = v.W;
         }
 
-        public Vec4(Syroot.Maths.Vector4F v)
+        public Vec4(Vector4F v)
         {
             X = v.X;
             Y = v.Y;
             Z = v.Z;
             W = v.W;
+        }
+
+        public Vec4(Vec3 euler)
+        {
+            var yaw = euler.Y;
+            var pitch = euler.X;
+            var roll = euler.Z;
+
+            var cy = Math.Cos(yaw * 0.5);
+            var sy = Math.Sin(yaw * 0.5);
+            var cp = Math.Cos(pitch * 0.5);
+            var sp = Math.Sin(pitch * 0.5);
+            var cr = Math.Cos(roll * 0.5);
+            var sr = Math.Sin(roll * 0.5);
+
+            W = (float)(cr * cp * cy + sr * sp * sy);
+            X = (float)(sr * cp * cy - cr * sp * sy);
+            Y = (float)(cr * sp * cy + sr * cp * sy);
+            Z = (float)(cr * cp * sy - sr * sp * cy);
+        }
+
+        public float this[int index]
+        {
+            get
+            {
+                switch (index)
+                {
+                    case 0:
+                        return X;
+                    case 1:
+                        return Y;
+                    case 2:
+                        return Z;
+                    case 3:
+                        return W;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index),
+                            string.Format("Index must be between 0 and {0}.", 4));
+                }
+            }
+            set
+            {
+                switch (index)
+                {
+                    case 0:
+                        X = value;
+                        break;
+                    case 1:
+                        Y = value;
+                        break;
+                    case 2:
+                        Z = value;
+                        break;
+                    case 3:
+                        W = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index),
+                            string.Format("Index must be between 0 and {0}.", 4));
+                }
+            }
+        }
+
+        public float Magnitude => MathF.Sqrt(MathF.Pow(X, 2) + MathF.Pow(Y, 2) + MathF.Pow(Z, 2) + MathF.Pow(W, 2));
+
+        public Vec4 Normalized
+        {
+            get
+            {
+                var mag = Magnitude;
+
+                if (mag < 0.0001f) return this;
+
+                return new Vec4(X / mag, Y / mag, Z / mag, W / mag);
+            }
         }
 
         public static Vec4 operator *(Vec4 value1, Quaternion value2)
         {
-            Vec4 ans = new Vec4();
+            var ans = new Vec4();
 
-            float q1x = value1.X;
-            float q1y = value1.Y;
-            float q1z = value1.Z;
-            float q1w = value1.W;
+            var q1x = value1.X;
+            var q1y = value1.Y;
+            var q1z = value1.Z;
+            var q1w = value1.W;
 
-            float q2x = value2.X;
-            float q2y = value2.Y;
-            float q2z = value2.Z;
-            float q2w = value2.W;
+            var q2x = value2.X;
+            var q2y = value2.Y;
+            var q2z = value2.Z;
+            var q2w = value2.W;
 
             // cross(av, bv)
-            float cx = q1y * q2z - q1z * q2y;
-            float cy = q1z * q2x - q1x * q2z;
-            float cz = q1x * q2y - q1y * q2x;
+            var cx = q1y * q2z - q1z * q2y;
+            var cy = q1z * q2x - q1x * q2z;
+            var cz = q1x * q2y - q1y * q2x;
 
-            float dot = q1x * q2x + q1y * q2y + q1z * q2z;
+            var dot = q1x * q2x + q1y * q2y + q1z * q2z;
 
             ans.X = q1x * q2w + q2x * q1w + cx;
             ans.Y = q1y * q2w + q2y * q1w + cy;
@@ -82,71 +160,20 @@ public partial class ModelUtility
             return ans;
         }
 
-        public static implicit operator Quaternion(Vec4 d) => new Quaternion(d.X, d.Y, d.Z, d.W);
-        public static implicit operator Vec4(Quaternion d) => new Vec4(d.X, d.Y, d.Z, d.W);
-
-        public Vec4(Vec3 euler)
+        public static implicit operator Quaternion(Vec4 d)
         {
-            var yaw = euler.Y;
-            var pitch = euler.X;
-            var roll = euler.Z; 
+            return new Quaternion(d.X, d.Y, d.Z, d.W);
+        }
 
-            double cy = Math.Cos(yaw * 0.5);
-            double sy = Math.Sin(yaw * 0.5);
-            double cp = Math.Cos(pitch * 0.5);
-            double sp = Math.Sin(pitch * 0.5);
-            double cr = Math.Cos(roll * 0.5);
-            double sr = Math.Sin(roll * 0.5);
-
-            W = (float)(cr * cp * cy + sr * sp * sy);
-            X = (float)(sr * cp * cy - cr * sp * sy);
-            Y = (float)(cr * sp * cy + sr * cp * sy);
-            Z = (float)(cr * cp * sy - sr * sp * cy);
+        public static implicit operator Vec4(Quaternion d)
+        {
+            return new Vec4(d.X, d.Y, d.Z, d.W);
         }
 
 
         public static Vec4 operator +(Vec4 v1, Vec4 v2)
         {
-            return new Vec4(v1.X + v2.X, v1.Y + v2.Y, v1.Z + v2.Z, v1.W+v2.W);
-        }
-        public float this[int index]
-        {
-            get
-            {
-                switch (index)
-                {
-                    case 0:
-                        return this.X;
-                    case 1:
-                        return this.Y;
-                    case 2:
-                        return this.Z;
-                    case 3:
-                        return this.W;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(index), string.Format("Index must be between 0 and {0}.", (object)4));
-                }
-            }
-            set
-            {
-                switch (index)
-                {
-                    case 0:
-                        this.X = value;
-                        break;
-                    case 1:
-                        this.Y = value;
-                        break;
-                    case 2:
-                        this.Z = value;
-                        break;
-                    case 3:
-                        this.W = value;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(index), string.Format("Index must be between 0 and {0}.", (object)4));
-                }
-            }
+            return new Vec4(v1.X + v2.X, v1.Y + v2.Y, v1.Z + v2.Z, v1.W + v2.W);
         }
 
 
@@ -160,32 +187,12 @@ public partial class ModelUtility
             return new Vec2(X, Y);
         }
 
-        public float Magnitude
-        {
-            get { return MathF.Sqrt(MathF.Pow(X, 2) + MathF.Pow(Y, 2) + MathF.Pow(Z, 2) + MathF.Pow(W, 2)); }
-        }
-
-        public Vec4 Normalized
-        {
-            get
-            {
-                var mag = this.Magnitude;
-
-                if (mag < 0.0001f)
-                {
-                    return this;
-                }
-
-                return new Vec4(X / mag, Y / mag, Z / mag, W / mag);
-            }
-        }
-
         public void Write(ModelWriter writer)
         {
-            writer.Write(X);
-            writer.Write(Y);
-            writer.Write(Z);
             writer.Write(W);
+            writer.Write(Z);
+            writer.Write(Y);
+            writer.Write(X);
         }
     }
 
@@ -211,34 +218,38 @@ public partial class ModelUtility
         {
         }
 
-        public Vec3(System.Numerics.Vector3 v)
+        public Vec3(Vector3 v)
         {
             X = v.X;
             Y = v.Y;
             Z = v.Z;
         }
 
-        public Vec3(Syroot.Maths.Vector3F v)
+        public Vec3(Vector3F v)
         {
             X = v.X;
             Y = v.Y;
             Z = v.Z;
         }
 
-        public static implicit operator Vector3(Vec3 d) => new Vector3(d.X,d.Y,d.Z);
-        public static implicit operator Vec3(Vector3 d) => new Vec3(d.X, d.Y, d.Z);
+
+        public float Magnitude => MathF.Sqrt(MathF.Pow(X, 2) + MathF.Pow(Y, 2) + MathF.Pow(Z, 2));
+
+        public static implicit operator Vector3(Vec3 d)
+        {
+            return new Vector3(d.X, d.Y, d.Z);
+        }
+
+        public static implicit operator Vec3(Vector3 d)
+        {
+            return new Vec3(d.X, d.Y, d.Z);
+        }
 
         public void Write(ModelWriter writer)
         {
             writer.Write(X);
             writer.Write(Y);
             writer.Write(Z);
-        }
-
-
-        public float Magnitude
-        {
-            get { return MathF.Sqrt(MathF.Pow(X, 2) + MathF.Pow(Y, 2) + MathF.Pow(Z, 2)); }
         }
 
         public static Vec3 operator +(Vec3 v1, Vec3 v2)
@@ -276,13 +287,25 @@ public partial class ModelUtility
     {
         public float X, Y;
 
-        public static implicit operator Vector2(Vec2 d) => new Vector2(d.X, d.Y);
-        public static implicit operator Vector3(Vec2 d) => new Vector3(d.X, d.Y,0);
-        public static implicit operator Vec2(Vector2 d) => new Vec2(d.X, d.Y);
         public Vec2(float x, float y)
         {
             X = x;
             Y = y;
+        }
+
+        public static implicit operator Vector2(Vec2 d)
+        {
+            return new Vector2(d.X, d.Y);
+        }
+
+        public static implicit operator Vector3(Vec2 d)
+        {
+            return new Vector3(d.X, d.Y, 0);
+        }
+
+        public static implicit operator Vec2(Vector2 d)
+        {
+            return new Vec2(d.X, d.Y);
         }
     }
 }
