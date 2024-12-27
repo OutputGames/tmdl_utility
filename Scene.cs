@@ -8,22 +8,36 @@ public partial class ModelUtility
 {
     public class Node
     {
-        public string name;
-        public Vec3 Position = new Vec3();
-        public Vec4 Rotation = new Vec4(0,0,0,1);
-        public Vec3 Scale = new Vec3(1);
-
-        public List<int> Meshes = new List<int>();
-        public bool IsBone;
-
-        public List<Node> children = new List<Node>();
-        public Node parent = null;
+        public List<Node> children = new();
 
         public int id = -1;
+        public bool IsBone;
+
+        public List<int> Meshes = new();
+        public string name;
+        public Node parent;
+        public Vec3 Position = new();
+        public Vec4 Rotation = new(0, 0, 0, 1);
+        public Vec3 Scale = new(1);
 
         public Node(string name = "Node")
         {
             this.name = name;
+        }
+
+        public Node(Bone bone)
+        {
+            name = bone.name;
+            IsBone = true;
+            Position = bone.Position;
+            Rotation = bone.Rotation;
+            Scale = bone.Scale;
+
+            foreach (var boneChild in bone.children)
+            {
+                var n = new Node(boneChild);
+                n.SetParent(this);
+            }
         }
 
         public static Matrix4x4 CalculateTransformMatrix(Node bone)
@@ -31,20 +45,6 @@ public partial class ModelUtility
             return Matrix4x4.CreateScale(bone.Scale) *
                    Matrix4x4.CreateFromQuaternion(bone.Rotation) *
                    Matrix4x4.CreateTranslation(bone.Scale);
-        }
-        public Node(Bone bone)
-        {
-            this.name = bone.name;
-            IsBone = true;
-            this.Position = bone.Position;
-            this.Rotation = bone.Rotation;
-            this.Scale = bone.Scale;
-
-            foreach (var boneChild in bone.children)
-            {
-                var n = new Node(boneChild);
-                n.SetParent(this);
-            }
         }
 
         public Assimp.Node ToAiNode()
@@ -54,10 +54,7 @@ public partial class ModelUtility
             ai.Transform = CalculateTransformMatrix(this);
             ai.MeshIndices.AddRange(Meshes);
 
-            foreach (var child in children)
-            {
-                ai.Children.Add(child.ToAiNode());
-            }
+            foreach (var child in children) ai.Children.Add(child.ToAiNode());
 
 
             return ai;
@@ -86,35 +83,27 @@ public partial class ModelUtility
             Scale.Write(writer);
 
             writer.Write(Meshes.Count);
-            foreach (var idx in Meshes)
-            {
-                writer.Write(idx);
-            }
+            foreach (var idx in Meshes) writer.Write(idx);
 
-            writer.Write(IsBone? 0 : 1);
+            writer.Write(IsBone ? 0 : 1);
 
             writer.Write(children.Count);
-            foreach (var child in children)
-            {
-                child.Write(writer);
-            }
+            foreach (var child in children) child.Write(writer);
         }
 
         public Node GetChild(string name)
         {
             foreach (var child in children)
-            {
                 if (child.name == name)
                     return child;
-            }
 
             return null;
         }
 
         public bool RemoveChild(string name)
         {
-            int i = 0;
-            bool found = false;
+            var i = 0;
+            var found = false;
             foreach (var child in children)
             {
                 if (child.name == name)
@@ -122,14 +111,9 @@ public partial class ModelUtility
                     found = true;
                     break;
                 }
-                else
-                {
-                    found = child.RemoveChild(name);
-                    if (found)
-                    {
-                        return true;
-                    }
-                }
+
+                found = child.RemoveChild(name);
+                if (found) return true;
 
                 i++;
             }
@@ -144,10 +128,7 @@ public partial class ModelUtility
             var c = new List<Node>();
 
             c.AddRange(children);
-            foreach (var child in children)
-            {
-                c.AddRange(child.GetAllChildren());
-            }
+            foreach (var child in children) c.AddRange(child.GetAllChildren());
 
             return c;
         }
@@ -171,9 +152,8 @@ public partial class ModelUtility
 
     public class Scene
     {
+        public List<Model> models = new();
         public string name;
-
-        public List<Model> models = new List<Model>();
 
         public Node rootNode;
 
@@ -185,17 +165,14 @@ public partial class ModelUtility
             rootNode.Write(writer);
 
             writer.Write(models.Count);
-            foreach (var model in models)
-            {
-                model.Write(writer);
-            }
+            foreach (var model in models) model.Write(writer);
         }
 
         public void Export(string path, string format)
         {
             path += "." + format;
 
-            Assimp.AssimpContext ctx = new AssimpContext();
+            var ctx = new AssimpContext();
 
             var ascn = new Assimp.Scene();
 
@@ -208,56 +185,132 @@ public partial class ModelUtility
                 {
                     var mesh = new Assimp.Mesh();
                     mesh.Name = modelMesh.Name;
-                    mesh.MaterialIndex = modelMesh.MaterialIndex;
+                    mesh.MaterialIndex = 0;
                     for (var i = 0; i < modelMesh.Vertices.Length; i++)
                     {
                         mesh.Vertices.Add(modelMesh.Vertices[i]);
                         mesh.Normals.Add(modelMesh.Normals[i]);
-                        mesh.TextureCoordinateChannels[0].Add(modelMesh.UV0[i]);
+                        //mesh.TextureCoordinateChannels[0].Add(modelMesh.UV0[i]);
                     }
 
                     var idxs = new List<int>();
 
-                    foreach (var modelMeshIndex in modelMesh.Indices)
-                    {
-                        idxs.Add(modelMeshIndex);
-                    }
+                    foreach (var modelMeshIndex in modelMesh.Indices) idxs.Add(modelMeshIndex);
 
                     mesh.SetIndices(idxs.ToArray(), 3);
+
+                    var bones = new List<Bone>();
+
+                    foreach (var modelMeshBoneID in modelMesh.BoneIDs)
+                    foreach (var i in modelMeshBoneID)
+                    {
+                        if (i == -1)
+                            continue;
+
+                        var bone = model.Skeleton.bones[i];
+
+                        if (!bones.Contains(bone)) bones.Add(bone);
+                    }
+
+                    foreach (var skeleBone in bones)
+                    {
+                        var bone = new Assimp.Bone();
+
+                        bone.Name = skeleBone.name;
+                        bone.OffsetMatrix = skeleBone.offsetMatrix;
+
+                        mesh.Bones.Add(bone);
+                    }
+
+                    for (var i = 0; i < modelMesh.BoneIDs.Length; i++)
+                    {
+                        var boneIds = modelMesh.BoneIDs[i];
+                        var weights = modelMesh.VertexWeights[i];
+
+                        for (var j = 0; j < weights.Length; j++)
+                        {
+                            var boneId = boneIds[j];
+                            var weight = weights[j];
+
+                            if (boneId == -1)
+                                continue;
+
+                            var bone = mesh.Bones[boneId];
+                            bone.VertexWeights.Add(new VertexWeight(i, weight));
+                        }
+                    }
 
                     ascn.Meshes.Add(mesh);
                 }
 
-                foreach (var modelTexture in model.Textures)
+                foreach (var modelAnimation in model.Animations)
                 {
+                    var animation = new Assimp.Animation();
 
-                    List<Texel> texels = new List<Texel>();
+                    animation.DurationInTicks = modelAnimation.duration;
+                    animation.TicksPerSecond = modelAnimation.ticksPerSecond;
 
-                    for (int x = 0; x < modelTexture.width; x++)
+                    foreach (var (key, nodeChannel) in modelAnimation.nodeChannels)
                     {
-                        for (int y = 0; y < modelTexture.height; y++)
-                        {
-                            var texel = new Texel();
+                        var channel = new NodeAnimationChannel();
+                        channel.NodeName = nodeChannel.NodeName;
 
-                            for (int i = 0; i < modelTexture.channelCount; i++)
-                            {
-                                var data = modelTexture.data[
-                                    (x + y * modelTexture.width) * modelTexture.channelCount + i];
-                                if (i == 0)
-                                    texel.R = data;
-                                else if (i == 1)
-                                    texel.G = data;
-                                else if (i == 2)
-                                    texel.B = data;
-                                else if (i == 3)
-                                    texel.A = data;
-                            }
+                        foreach (var nodeChannelPosition in nodeChannel.Positions)
+                            channel.PositionKeys.Add(new VectorKey(nodeChannelPosition.Time,
+                                nodeChannelPosition.value));
 
-                            texels.Add(texel);
-                        }
+                        foreach (var nodeChannelRotation in nodeChannel.Rotations)
+                            channel.RotationKeys.Add(new QuaternionKey(nodeChannelRotation.Time,
+                                nodeChannelRotation.value));
+
+                        foreach (var nodeChannelScale in nodeChannel.Scales)
+                            channel.PositionKeys.Add(new VectorKey(nodeChannelScale.Time, nodeChannelScale.value));
+
+                        animation.NodeAnimationChannels.Add(channel);
                     }
 
-                    var texture = new Assimp.EmbeddedTexture(modelTexture.width, modelTexture.height, texels.ToArray(),
+                    ascn.Animations.Add(animation);
+                }
+            }
+
+
+            {
+                var mat = new Assimp.Material();
+
+                mat.Name = "DefaultName";
+                mat.ShadingMode = ShadingMode.CookTorrance;
+
+                ascn.Materials.Add(mat);
+            }
+
+            /*
+                foreach (var modelTexture in model.Textures)
+                {
+                    var texels = new List<Texel>();
+
+                    for (var x = 0; x < modelTexture.width; x++)
+                    for (var y = 0; y < modelTexture.height; y++)
+                    {
+                        var texel = new Texel();
+
+                        for (var i = 0; i < modelTexture.channelCount; i++)
+                        {
+                            var data = modelTexture.data[
+                                (x + y * modelTexture.width) * modelTexture.channelCount + i];
+                            if (i == 0)
+                                texel.R = data;
+                            else if (i == 1)
+                                texel.G = data;
+                            else if (i == 2)
+                                texel.B = data;
+                            else if (i == 3)
+                                texel.A = data;
+                        }
+
+                        texels.Add(texel);
+                    }
+
+                    var texture = new EmbeddedTexture(modelTexture.width, modelTexture.height, texels.ToArray(),
                         ConvertToFilePath(modelTexture.name));
 
                     ascn.Textures.Add(texture);
@@ -281,76 +334,61 @@ public partial class ModelUtility
                         var textureType = TextureType.None;
                         var fpath = ConvertToFilePath(p);
 
-                        Dictionary<string, TextureType> samplerTypes = new Dictionary<string, TextureType>()
+                        Dictionary<string, TextureType> samplerTypes = new()
                         {
-                            {"_a0",TextureType.Diffuse},
-                            {"_r0", TextureType.Roughness},
-                            {"_op0", TextureType.Opacity},
-                            {"a0",TextureType.Diffuse},
-                            {"o0", TextureType.Opacity},
-                            {"_o0", TextureType.Opacity},
-                            {"_e0", TextureType.Emissive},
-                            {"_n0", TextureType.Normals},
-                            {"_ao0", TextureType.Ambient},
-                            {"_m0", TextureType.Reflection},
-                            {"n0", TextureType.Normals},
+                            { "_a0", TextureType.Diffuse },
+                            { "_r0", TextureType.Roughness },
+                            { "_op0", TextureType.Opacity },
+                            { "a0", TextureType.Diffuse },
+                            { "o0", TextureType.Opacity },
+                            { "_o0", TextureType.Opacity },
+                            { "_e0", TextureType.Emissive },
+                            { "_n0", TextureType.Normals },
+                            { "_ao0", TextureType.Ambient },
+                            { "_m0", TextureType.Reflection },
+                            { "n0", TextureType.Normals }
                             //{"sampler0", TextureType.Emissive},
                             //{"_fm0", TextureType.Emissive},
-
                         };
 
-                        if (samplerTypes.ContainsKey(type))
-                        {
-                            textureType = samplerTypes[type];
-                        }
+                        if (samplerTypes.ContainsKey(type)) textureType = samplerTypes[type];
 
                         Texture tex = null;
                         foreach (var modelTexture in model.Textures)
-                        {
                             if (modelTexture.name == p)
                             {
                                 tex = modelTexture;
                                 break;
                             }
-                        }
 
-                        if (tex != null)
-                        {
-                            tex.Export(Path.GetDirectoryName(path) + "\\" + fpath);
-                        }
+                        if (tex != null) tex.Export(Path.GetDirectoryName(path) + "\\" + fpath);
 
-                        return new TextureSlot(fpath, textureType, 0, TextureMapping.FromUV, 0, 1, TextureOperation.Add, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 0);
+                        return new TextureSlot(fpath, textureType, 0, TextureMapping.FromUV, 0, 1, TextureOperation.Add,
+                            TextureWrapMode.Clamp, TextureWrapMode.Clamp, 0);
                     }
 
                     foreach (var (key, value) in modelMaterial.Textures)
-                    {
                         material.AddMaterialTexture(ConvertToTextureSlot(value, key));
-                    }
 
                     ascn.Materials.Add(material);
                 }
-            }
-
+                */
 
             ctx.ExportFile(ascn, path, format);
 
             var startInfo = new ProcessStartInfo("\"C:\\Program Files\\Assimp\\bin\\x64\\assimp_viewer.exe\"");
 
             Process[] runningProcesses = Process.GetProcesses();
-            foreach (Process process in runningProcesses)
-            {
+            foreach (var process in runningProcesses)
                 if (process.ProcessName == Path.GetFileNameWithoutExtension(startInfo.FileName) &&
                     process.MainModule != null &&
-                    string.Compare(process.MainModule.FileName, startInfo.FileName, StringComparison.InvariantCultureIgnoreCase) == 0)
-                {
+                    string.Compare(process.MainModule.FileName, startInfo.FileName,
+                        StringComparison.InvariantCultureIgnoreCase) == 0)
                     process.Kill();
-                }
-            }
 
             startInfo.ArgumentList.Add($"{path}");
 
-            var proc = System.Diagnostics.Process.Start(startInfo);
-
+            var proc = Process.Start(startInfo);
         }
 
 
@@ -361,10 +399,8 @@ public partial class ModelUtility
                 rootNode = new Node();
                 return true;
             }
-            else
-            {
-                return rootNode.RemoveChild(name);
-            }
+
+            return rootNode.RemoveChild(name);
         }
 
         public Node GetNode(string name)

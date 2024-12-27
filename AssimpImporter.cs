@@ -1,8 +1,5 @@
-﻿using static tmdl_utility.ModelUtility;
-using Assimp;
+﻿using Assimp;
 using StbiSharp;
-using System.Diagnostics;
-using System.Numerics;
 
 namespace tmdl_utility;
 
@@ -32,14 +29,13 @@ public class AssimpImporter
         mscene.rootNode.AddChild(ProcessAiNode(scene.RootNode));
 
 
-
         #region Assimp Models
 
-        var boneDict = new Dictionary<string, Assimp.Bone>();
+        var boneDict = new Dictionary<string, Bone>();
 
-        var model = new Model();
+        var model = new ModelUtility.Model();
         model.Meshes = new ModelUtility.Mesh[scene.MeshCount];
-        model.Name = "TMDL_"+scene.Name;
+        model.Name = "TMDL_" + scene.Name;
 
         var modelNode = new ModelUtility.Node(model.Name);
         modelNode.SetParent(mscene.rootNode);
@@ -47,20 +43,20 @@ public class AssimpImporter
         foreach (var sceneMesh in scene.Meshes)
         {
             var mesh = new ModelUtility.Mesh();
-            mesh.Vertices = new Vec3[sceneMesh.VertexCount];
-            mesh.Normals = new Vec3[sceneMesh.VertexCount];
-            mesh.UV0 = new Vec2[sceneMesh.VertexCount];
+            mesh.Vertices = new ModelUtility.Vec3[sceneMesh.VertexCount];
+            mesh.Normals = new ModelUtility.Vec3[sceneMesh.VertexCount];
+            mesh.UV0 = new ModelUtility.Vec2[sceneMesh.VertexCount];
             mesh.VertexWeights = new float[sceneMesh.VertexCount][];
             mesh.BoneIDs = new int[sceneMesh.VertexCount][];
 
             mesh.Name = sceneMesh.Name;
 
-            mesh.Indices = new UInt16[sceneMesh.FaceCount * 3];
+            mesh.Indices = new ushort[sceneMesh.FaceCount * 3];
 
             var boneIndices = new List<int>[sceneMesh.VertexCount];
             var boneWeights = new List<float>[sceneMesh.VertexCount];
 
-            for (int i = 0; i < sceneMesh.VertexCount; i++)
+            for (var i = 0; i < sceneMesh.VertexCount; i++)
             {
                 boneIndices[i] = new List<int>();
                 boneWeights[i] = new List<float>();
@@ -69,7 +65,7 @@ public class AssimpImporter
 
             foreach (var bone in sceneMesh.Bones)
             {
-                int boneId = sceneMesh.Bones.IndexOf(bone);
+                var boneId = sceneMesh.Bones.IndexOf(bone);
                 foreach (var (vertexId, weight) in bone.VertexWeights)
                 {
                     if (boneIndices[vertexId].Count >= 4)
@@ -80,6 +76,7 @@ public class AssimpImporter
                 }
             }
 
+            /*
             for (var i = 0; i < boneWeights.Length; i++)
             {
                 var weight = boneWeights[i];
@@ -89,6 +86,7 @@ public class AssimpImporter
                     boneWeights[i][j] /= totalWeight;
                 }
             }
+            */
 
             for (var i = 0; i < sceneMesh.Vertices.Count; i++)
             {
@@ -96,31 +94,25 @@ public class AssimpImporter
                 var nrm = sceneMesh.Normals[i];
                 var uv0 = sceneMesh.TextureCoordinateChannels[0][i];
 
-                mesh.Vertices[i] = new Vec3(vtx.X, vtx.Y, vtx.Z);
-                mesh.Normals[i] = new Vec3(nrm.X, nrm.Y, nrm.Z);
-                mesh.UV0[i] = new Vec2(uv0.X, uv0.Y);
+                mesh.Vertices[i] = new ModelUtility.Vec3(vtx.X, vtx.Y, vtx.Z);
+                mesh.Normals[i] = new ModelUtility.Vec3(nrm.X, nrm.Y, nrm.Z);
+                mesh.UV0[i] = new ModelUtility.Vec2(uv0.X, uv0.Y);
                 mesh.BoneIDs[i] = boneIndices[i].ToArray();
                 mesh.VertexWeights[i] = boneWeights[i].ToArray();
             }
 
-            int iidx = 0;
+            var iidx = 0;
             foreach (var sceneMeshFace in sceneMesh.Faces)
+            foreach (var index in sceneMeshFace.Indices)
             {
-                foreach (var index in sceneMeshFace.Indices)
-                {
-                    mesh.Indices[iidx] = (ushort)index;
+                mesh.Indices[iidx] = (ushort)index;
 
-                    iidx++;
-                }
+                iidx++;
             }
 
             foreach (var bone in sceneMesh.Bones)
-            {
                 if (!boneDict.ContainsKey(bone.Name))
-                {
                     boneDict.Add(bone.Name, bone);
-                }
-            }
 
             mesh.MaterialIndex = sceneMesh.MaterialIndex;
 
@@ -131,12 +123,9 @@ public class AssimpImporter
             meshNode.SetParent(modelNode);
         }
 
-        model.Skeleton = new Skeleton(mscene.GetNode(boneDict.Keys.ToList()[0]));
+        model.Skeleton = new ModelUtility.Skeleton(mscene.GetNode(boneDict.Keys.ToList()[0]));
 
-        foreach (var skeletonBone in model.Skeleton.bones)
-        {
-            mscene.RemoveNode(skeletonBone.name);
-        }
+        foreach (var skeletonBone in model.Skeleton.bones) mscene.RemoveNode(skeletonBone.name);
         mscene.RemoveNode("Armature");
 
         var snode = model.Skeleton.ToNode();
@@ -145,12 +134,12 @@ public class AssimpImporter
         armatureNode.IsBone = true;
         armatureNode.AddNode(snode);
 
-        model.Textures = new Texture[scene.TextureCount];
+        model.Textures = new ModelUtility.Texture[scene.TextureCount];
 
         for (var i = 0; i < scene.Textures.Count; i++)
         {
             var tex = scene.Textures[i];
-            var texture = new Texture();
+            var texture = new ModelUtility.Texture();
             texture.width = tex.Width;
             texture.height = tex.Height;
             texture.name = tex.Filename;
@@ -160,7 +149,7 @@ public class AssimpImporter
                 using (var memoryStream = new MemoryStream())
                 {
                     memoryStream.Write(tex.CompressedData);
-                    StbiImage image = Stbi.LoadFromMemory(memoryStream, 4);
+                    var image = Stbi.LoadFromMemory(memoryStream, 4);
 
                     texture.width = image.Width;
                     texture.height = image.Height;
@@ -174,15 +163,13 @@ public class AssimpImporter
             else
             {
                 texture.channelCount = 4;
-                List<byte> dat = new List<byte>();
+                var dat = new List<byte>();
 
-                for (int x = 0; x < texture.width; x++)
+                for (var x = 0; x < texture.width; x++)
+                for (var y = 0; y < texture.height; y++)
                 {
-                    for (int y = 0; y < texture.height; y++)
-                    {
-                        var texel = tex.NonCompressedData[x * texture.width + y];
-                        dat.AddRange(new List<byte> { texel.R, texel.G, texel.B, texel.A }.AsReadOnly());
-                    }
+                    var texel = tex.NonCompressedData[x * texture.width + y];
+                    dat.AddRange(new List<byte> { texel.R, texel.G, texel.B, texel.A }.AsReadOnly());
                 }
 
                 texture.data = dat.ToArray();
@@ -202,10 +189,8 @@ public class AssimpImporter
                 var texs = sceneMaterial.GetAllMaterialTextures();
 
                 foreach (var allMaterialTexture in texs)
-                {
                     material.Textures.Add(allMaterialTexture.TextureType.ToString(),
                         model.Textures[allMaterialTexture.TextureIndex].name);
-                }
             }
 
             material.name = sceneMaterial.Name;
@@ -233,19 +218,18 @@ public class AssimpImporter
 
     public static ModelUtility.Node ProcessAiNode(Assimp.Node ai, int count = -1, bool isBone = false)
     {
-
         var node = new ModelUtility.Node();
 
         node.name = ai.Name;
         node.id = count++;
 
         node.Meshes = ai.MeshIndices;
-        
-        ai.Transform.DecomposeMatrix(out var translation, out var rotation , out var scale );
 
-        node.Position = new Vec3(translation);
-        node.Rotation = new Vec4(rotation);
-        node.Scale = new Vec3(scale);
+        ai.Transform.DecomposeMatrix(out var translation, out var rotation, out var scale);
+
+        node.Position = new ModelUtility.Vec3(translation);
+        node.Rotation = new ModelUtility.Vec4(rotation);
+        node.Scale = new ModelUtility.Vec3(scale);
 
         foreach (var child in ai.Children)
         {
@@ -260,5 +244,4 @@ public class AssimpImporter
 
         return node;
     }
-
 }
