@@ -1,10 +1,11 @@
-﻿using static tmdl_utility.ModelUtility;
+﻿using System.Numerics;
 using BfresLibrary;
-using System.Diagnostics;
 using BfresLibrary.GX2;
-using ZstdSharp;
 using BfresLibrary.Helpers;
+using BfresLibrary.Switch;
 using Syroot.BinaryData;
+using ZstdSharp;
+using static tmdl_utility.ModelUtility;
 using Bone = BfresLibrary.Bone;
 using Model = BfresLibrary.Model;
 
@@ -12,9 +13,9 @@ namespace tmdl_utility;
 
 public class BfresImporter
 {
-    public static ModelUtility.Scene LoadBfres(UtilityInitInfo info)
+    public static Scene LoadBfres(UtilityInitInfo info)
     {
-        MemoryStream stream = new MemoryStream();
+        var stream = new MemoryStream();
         if (info.Source.EndsWith(".zs"))
         {
             var src = File.ReadAllBytes(info.Source);
@@ -40,6 +41,7 @@ public class BfresImporter
         ExtractTextures(resFile, textures);
 
         #region Bfres Model Loading
+
         foreach (var (key, resfileModel) in resFile.Models)
         {
             ModelUtility.Model mdl;
@@ -65,7 +67,7 @@ public class BfresImporter
 
         #endregion
 
-        List<Animation> animations = new List<Animation>();
+        List<Animation> animations = new();
         foreach (var (name, anim) in resFile.SkeletalAnims)
         {
             var animation = new Animation();
@@ -74,7 +76,7 @@ public class BfresImporter
             animation.duration = anim.FrameCount;
             animation.ticksPerSecond = 60;
 
-            int jk = 0;
+            var jk = 0;
             foreach (var resFileModel in resFile.Models)
             {
                 if (resFileModel.Value.Skeleton == anim.BindSkeleton)
@@ -82,13 +84,11 @@ public class BfresImporter
                     animation.assignedModel = jk;
                     break;
                 }
+
                 jk++;
             }
 
-            if (animation.assignedModel == -1)
-            {
-                animation.assignedModel = 0;
-            }
+            if (animation.assignedModel == -1) animation.assignedModel = 0;
 
             foreach (var boneAnim in anim.BoneAnims)
             {
@@ -104,6 +104,7 @@ public class BfresImporter
                     channel.Scales.Clear();
                     channel.Scales.Add(new Key<Vec3>(0, new Vec3(1)));
                 }
+
                 if (boneAnim.ApplyScaleOne)
                 {
                     channel.Positions.Clear();
@@ -139,7 +140,6 @@ public class BfresImporter
                 if (channel.Positions.Count > 0 || channel.Rotations.Count > 0 || channel.Scales.Count > 0)
                 {
                     if (anim.FlagsRotate == SkeletalAnimFlagsRotate.EulerXYZ)
-                    {
                         foreach (var channelRotation in channel.Rotations)
                         {
                             var euler = channelRotation.value.ToVec3();
@@ -147,7 +147,6 @@ public class BfresImporter
                             var val = new Vec4(euler);
                             channelRotation.value = val;
                         }
-                    }
 
                     animation.nodeChannels.Add(channel.NodeName, channel);
                 }
@@ -162,14 +161,12 @@ public class BfresImporter
 
         foreach (var sceneModel in scene.models)
         {
-            List<Animation> anims = new List<Animation>();
+            List<Animation> anims = new();
 
             var idx = scene.models.IndexOf(sceneModel);
             foreach (var animation in animations)
-            {
                 if (animation.assignedModel == idx)
                     anims.Add(animation);
-            }
 
             sceneModel.Animations = anims.ToArray();
         }
@@ -177,10 +174,11 @@ public class BfresImporter
         return scene;
     }
 
-    private static (int, ModelUtility.Model, Node) ExtractModel(Model resfileModel, int nct, ResFile resFile, Texture[] textures, Scene scene,
+    private static (int, ModelUtility.Model, Node) ExtractModel(Model resfileModel, int nct, ResFile resFile,
+        Texture[] textures, Scene scene,
         ref int mshCt)
     {
-        int vct = 0;
+        var vct = 0;
         var model = new ModelUtility.Model();
 
         model.Name = resfileModel.Name;
@@ -193,20 +191,16 @@ public class BfresImporter
 
         var armatureNode = new Node("Armature");
 
-        var boneDict = new Dictionary<BfresLibrary.Bone, Node>();
+        var boneDict = new Dictionary<Bone, Node>();
         foreach (var bone in resfileModel.Skeleton.BoneList)
         {
             var bNode = new Node(bone.Name);
 
             bNode.Position = new Vec3(bone.Position.X, bone.Position.Y, bone.Position.Z);
             if (bone.FlagsRotation != BoneFlagsRotation.EulerXYZ)
-            {
                 bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
-            }
             else
-            {
                 bNode.Rotation = new Vec4(new Vec3(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z));
-            }
 
             bNode.Scale = new Vec3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z);
 
@@ -214,16 +208,10 @@ public class BfresImporter
         }
 
         foreach (var (bone, node) in boneDict)
-        {
             if (bone.ParentIndex == -1)
-            {
                 node.SetParent(armatureNode);
-            }
             else
-            {
                 node.SetParent(boneDict.Values.ToList()[bone.ParentIndex]);
-            }
-        }
 
         foreach (var (s, shape) in resfileModel.Shapes)
         {
@@ -243,38 +231,38 @@ public class BfresImporter
             mesh.Vertices = pos.ToVec3Array();
             mesh.Normals = nrm.ToVec3Array();
             mesh.UV0 = uv0.ToVec2Array();
-            List<int[]> bids = new List<int[]>();
+            List<int[]> bids = new();
             foreach (var vec4 in id0)
             {
+                vec4.X -= 1;
+                vec4.Y -= 1;
+                vec4.Z -= 1;
+                vec4.W -= 1;
+
                 bids.Add(vec4.ToArray());
             }
+
             mesh.BoneIDs = bids.ToArray();
 
-            List<float[]> wghts = new List<float[]>();
-            foreach (var vec4 in w0)
-            {
-                wghts.Add(vec4.ToFltArray());
-            }
+            List<float[]> wghts = new();
+            foreach (var vec4 in w0) wghts.Add(vec4.ToFltArray());
             mesh.VertexWeights = wghts.ToArray();
 
             if (id0.Length == 0)
             {
                 mesh.BoneIDs = new int[mesh.Vertices.Length][];
                 mesh.VertexWeights = new float[mesh.Vertices.Length][];
-                for (int i = 0; i < mesh.BoneIDs.Length; i++)
+                for (var i = 0; i < mesh.BoneIDs.Length; i++)
                 {
                     mesh.BoneIDs[i] = new[] { 1, -1, -1, -1 };
-                    mesh.VertexWeights[i] = new[] { 1.0f, 0,0, 0 };
+                    mesh.VertexWeights[i] = new[] { 1.0f, 0, 0, 0 };
                 }
             }
 
             mesh.Indices = new ushort[shapeMesh.IndexCount];
 
             var idxs = GetDisplayFaces(shapeMesh.GetIndices().ToList());
-            for (int i = 0; i < shapeMesh.IndexCount; i++)
-            {
-                mesh.Indices[i] = (ushort)(idxs[i] + shapeMesh.FirstVertex);
-            }
+            for (var i = 0; i < shapeMesh.IndexCount; i++) mesh.Indices[i] = (ushort)(idxs[i] + shapeMesh.FirstVertex);
 
             vct += mesh.Vertices.Length;
 
@@ -284,16 +272,14 @@ public class BfresImporter
             mlist.Add(mesh);
         }
 
-        for (int j = 0; j < resfileModel.Materials.Count; j++)
+        for (var j = 0; j < resfileModel.Materials.Count; j++)
         {
             var mat = resfileModel.Materials[j];
             var material = new ModelUtility.Material();
 
             material.name = mat.Name;
             foreach (var (s, sampler) in mat.Samplers)
-            {
                 material.Textures.Add(s, mat.TextureRefs[mat.Samplers.IndexOf(sampler)].Name);
-            }
 
 
             matList.Add(material);
@@ -316,6 +302,8 @@ public class BfresImporter
                 var mat = resfileModel.Skeleton.InverseModelMatrices;
 
                 skeletonBone.offsetMatrix = mat[bone.SmoothMatrixIndex].ConvertMatrix3x4();
+
+                skeletonBone.offsetMatrix = Matrix4x4.Transpose(skeletonBone.offsetMatrix);
             }
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }
@@ -330,10 +318,9 @@ public class BfresImporter
     {
         if (resFile.IsPlatformSwitch)
         {
-            int ind = 0;
-            foreach (BfresLibrary.Switch.SwitchTexture texture in resFile.Textures.Values)
+            var ind = 0;
+            foreach (SwitchTexture texture in resFile.Textures.Values)
             {
-
                 var tex = new Texture();
                 tex.width = (int)texture.Width;
                 tex.height = (int)texture.Height;
@@ -346,13 +333,10 @@ public class BfresImporter
 
                 var deswizzled = texture.GetDeswizzledData(0, 0);
 
-                string sformat = texture.Format.ToString();
+                var sformat = texture.Format.ToString();
                 sformat = sformat.Replace("T_", "");
 
-                if (sformat == "R8_G8_B8_A8_SRGB")
-                {
-                    sformat = "RGBA8_SRGB";
-                }
+                if (sformat == "R8_G8_B8_A8_SRGB") sformat = "RGBA8_SRGB";
 
                 TextureUtility.TexFormat informat;
                 Enum.TryParse(sformat.ToUpper(), out informat);
@@ -368,10 +352,9 @@ public class BfresImporter
         }
         else
         {
-            int ind = 0;
+            var ind = 0;
             foreach (BfresLibrary.WiiU.Texture texture in resFile.Textures.Values)
             {
-
                 var tex = new Texture();
                 tex.width = (int)texture.Width;
                 tex.height = (int)texture.Height;
@@ -395,13 +378,10 @@ public class BfresImporter
 
                 var deswizzled = texture.GetDeswizzledData(0, 0);
 
-                string sformat = texture.Format.ToString();
+                var sformat = texture.Format.ToString();
                 sformat = sformat.Replace("T_", "");
 
-                if (sformat == "R8_G8_B8_A8_SRGB")
-                {
-                    sformat = "RGBA8_SRGB";
-                }
+                if (sformat == "R8_G8_B8_A8_SRGB") sformat = "RGBA8_SRGB";
 
                 TextureUtility.TexFormat informat;
                 Enum.TryParse(sformat.ToUpper(), out informat);
@@ -414,11 +394,11 @@ public class BfresImporter
 
                 ind++;
             }
-
         }
     }
 
-    private static void ExtractAnimation(BoneAnim boneAnim, SkeletalAnim anim, out Animation.NodeChannel channel, out Vec3 basePos,
+    private static void ExtractAnimation(BoneAnim boneAnim, SkeletalAnim anim, out Animation.NodeChannel channel,
+        out Vec3 basePos,
         out Vec4 baseRot, out Vec3 baseScl)
     {
         channel = new Animation.NodeChannel();
@@ -433,98 +413,97 @@ public class BfresImporter
         {
             for (var i1 = 0; i1 < boneAnim.Curves.Count; i1++)
             {
-                AnimCurve curve = boneAnim.Curves[i1];
+                var curve = boneAnim.Curves[i1];
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
+                        Key<Vec3> posKey = new(frame.Key, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
                         channel.AddPosition(posKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
+                        Key<Vec3> posKey = new(frame.Key, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
                         channel.AddPosition(posKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> posKey = new Key<Vec3>((float)frame.Key, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
+                        Key<Vec3> posKey = new(frame.Key, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
                         channel.AddPosition(posKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 1));
+                        Key<Vec4> rotKey = new(frame.Key, new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 1));
                         channel.AddRotation(rotKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 1));
+                        Key<Vec4> rotKey = new(frame.Key, new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 1));
                         channel.AddRotation(rotKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 1));
+                        Key<Vec4> rotKey = new(frame.Key, new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 1));
                         channel.AddRotation(rotKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new Key<Vec4>((float)frame.Key, new Vec4(0, 0, 0, ((HermiteKey)frame.Value).Value));
+                        Key<Vec4> rotKey = new(frame.Key, new Vec4(0, 0, 0, ((HermiteKey)frame.Value).Value));
                         channel.AddRotation(rotKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
+                        Key<Vec3> scaleKey = new(frame.Key, new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
                         channel.AddScale(scaleKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
+                        Key<Vec3> scaleKey = new(frame.Key, new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
                         channel.AddScale(scaleKey);
                     }
                 }
 
                 {
-                    CurveAnimHelper helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
+                    var helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec3> scaleKey = new Key<Vec3>((float)frame.Key, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
+                        Key<Vec3> scaleKey = new(frame.Key, new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
                         channel.AddScale(scaleKey);
                     }
                 }
-
             }
 
             // Sort keys by time
@@ -536,24 +515,18 @@ public class BfresImporter
 
     public static Vec4[] ReadVertexBuffer(VertexBuffer vtx, string name, ByteOrder order)
     {
-        VertexBufferHelper helper = new VertexBufferHelper(vtx, order);
+        var helper = new VertexBufferHelper(vtx, order);
 
         //Set each array first from the lib if exist. Then add the data all in one loop
-        List<Vec4> data = new List<Vec4>();
+        List<Vec4> data = new();
 
         foreach (var (key, att) in vtx.Attributes)
-        {
             if (att.Name == name)
             {
                 var dat = helper[att.Name].Data;
 
-                foreach (var d in dat)
-                {
-
-                    data.Add(new Vec4(d.X, d.Y, d.Z, d.W));
-                }
+                foreach (var d in dat) data.Add(new Vec4(d.X, d.Y, d.Z, d.W));
             }
-        }
 
         return data.ToArray();
     }
@@ -563,56 +536,54 @@ public class BfresImporter
     {
         var displayFaceSize = 0;
         var strip = 0x40;
-        if ((strip >> 4) == 4)
+        if (strip >> 4 == 4)
         {
             displayFaceSize = faces.Count;
             return faces;
         }
-        else
+
+        var f = new List<uint>();
+
+        var startDirection = 1;
+        var p = 0;
+        var f1 = faces[p++];
+        var f2 = faces[p++];
+        var faceDirection = startDirection;
+        uint f3;
+        do
         {
-            List<uint> f = new List<uint>();
-
-            int startDirection = 1;
-            int p = 0;
-            uint f1 = faces[p++];
-            uint f2 = faces[p++];
-            int faceDirection = startDirection;
-            uint f3;
-            do
+            f3 = faces[p++];
+            if (f3 == 0xFFFF)
             {
-                f3 = faces[p++];
-                if (f3 == 0xFFFF)
+                f1 = faces[p++];
+                f2 = faces[p++];
+                faceDirection = startDirection;
+            }
+            else
+            {
+                faceDirection *= -1;
+                if (f1 != f2 && f2 != f3 && f3 != f1)
                 {
-                    f1 = faces[p++];
-                    f2 = faces[p++];
-                    faceDirection = startDirection;
-                }
-                else
-                {
-                    faceDirection *= -1;
-                    if ((f1 != f2) && (f2 != f3) && (f3 != f1))
+                    if (faceDirection > 0)
                     {
-                        if (faceDirection > 0)
-                        {
-                            f.Add(f3);
-                            f.Add(f2);
-                            f.Add(f1);
-                        }
-                        else
-                        {
-                            f.Add(f2);
-                            f.Add(f3);
-                            f.Add(f1);
-                        }
+                        f.Add(f3);
+                        f.Add(f2);
+                        f.Add(f1);
                     }
-                    f1 = f2;
-                    f2 = f3;
+                    else
+                    {
+                        f.Add(f2);
+                        f.Add(f3);
+                        f.Add(f1);
+                    }
                 }
-            } while (p < faces.Count);
 
-            displayFaceSize = f.Count;
-            return f;
-        }
+                f1 = f2;
+                f2 = f3;
+            }
+        } while (p < faces.Count);
+
+        displayFaceSize = f.Count;
+        return f;
     }
-
 }
