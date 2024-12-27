@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"C:\\Users\\chris\\OneDrive\\Roms\\splat3\\1.1.1\\Model\\Obj_AirBall.bfres.zs\" \"out/\"",
+      "commandLineArgs": "Single \"C:\\Users\\chris\\OneDrive\\Downloads\\cemu_1.26.2\\cemu_1.26.2\\mlc01\\usr\\title\\00050000\\10176900\\content\\Model\\Npc_Judge.szs\" \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }
