@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"C:\\Users\\chris\\OneDrive\\Downloads\\cemu_1.26.2\\cemu_1.26.2\\mlc01\\usr\\title\\00050000\\10176900\\content\\Model\\Npc_Judge.szs\" \"out/\"",
+      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\ProjectLumina\\resources\\model\\pik_rev1_no_mod.glb\" \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }
