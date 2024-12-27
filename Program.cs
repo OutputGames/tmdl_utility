@@ -1,16 +1,19 @@
-﻿
+﻿namespace tmdl_utility;
 
-
-
-namespace tmdl_utility
+internal class Program
 {
-    internal class Program
+    private static void Main(string[] args)
     {
-        static void Main(string[] args)
+        if (args.Length <= 1)
         {
-            var initInfo = new UtilityInitInfo(args);
+            Console.WriteLine("Enter a model path.");
 
-            var util = new ModelUtility(initInfo);
+            var p = Console.ReadLine();
+            args.SetValue(p, 1);
         }
+
+        var initInfo = new UtilityInitInfo(args);
+
+        var util = new ModelUtility(initInfo);
     }
 }
