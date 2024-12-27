@@ -93,6 +93,7 @@ public class BfresImporter
             {
                 ExtractAnimation(boneAnim, anim, out var channel, out var basePos, out var baseRot, out var baseScl);
 
+
                 channel.Positions.Add(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
 
                 channel.Rotations.Add(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
@@ -201,6 +202,8 @@ public class BfresImporter
             else
                 bNode.Rotation = new Vec4(new Vec3(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z));
 
+            bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+
             bNode.Scale = new Vec3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z);
 
             boneDict.Add(bone, bNode);
@@ -238,6 +241,32 @@ public class BfresImporter
                 //vec4.Z -= 1;
                 //vec4.W -= 1;
                 bids.Add(vec4.ToArray());
+
+            if (shape.SkinBoneIndices.Count > 1)
+                for (var j = 0; j < bids.Count; j++)
+                {
+                    var b = bids[j];
+                    for (var i = 0; i < b.Length; i++)
+                    {
+                        var boneIndices = shape.SkinBoneIndices[i];
+
+                        var bone = resfileModel.Skeleton.Bones[boneIndices];
+                        var ogBone = resfileModel.Skeleton.Bones[i];
+
+                        b[i] = boneIndices;
+                    }
+
+                    bids[j] = b;
+                }
+            else
+                for (var j = 0; j < bids.Count; j++)
+                {
+                    var b = bids[j];
+                    for (var i = 0; i < b.Length; i++) b[i] = shape.SkinBoneIndices[0];
+
+                    bids[j] = b;
+                }
+
 
             mesh.BoneIDs = bids.ToArray();
 
