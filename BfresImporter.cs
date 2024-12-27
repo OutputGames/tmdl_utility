@@ -105,7 +105,7 @@ public class BfresImporter
                     channel.Scales.Add(new Key<Vec3>(0, new Vec3(1)));
                 }
 
-                if (boneAnim.ApplyScaleOne)
+                if (boneAnim.ApplyTranslateZero)
                 {
                     channel.Positions.Clear();
                     channel.Positions.Add(new Key<Vec3>(0, new Vec3(0)));
@@ -114,13 +114,13 @@ public class BfresImporter
                 if (boneAnim.ApplyRotateZero)
                 {
                     channel.Rotations.Clear();
-                    channel.Rotations.Add(new Key<Vec4>(0, new Vec4(0.0f)));
+                    channel.Rotations.Add(new Key<Vec4>(0, new Vec4()));
                 }
 
                 if (boneAnim.ApplyIdentity)
                 {
                     channel.Rotations.Clear();
-                    channel.Rotations.Add(new Key<Vec4>(0, new Vec4(0.0f)));
+                    channel.Rotations.Add(new Key<Vec4>(0, new Vec4()));
                     channel.Positions.Clear();
                     channel.Positions.Add(new Key<Vec3>(0, new Vec3(0)));
                     channel.Scales.Clear();
@@ -207,7 +207,7 @@ public class BfresImporter
                 bNode.Rotation = Vec4.FromEuler(eul.ToEuler());
             }
 
-            bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+            //bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
 
             bNode.Scale = new Vec3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z);
 
@@ -273,13 +273,21 @@ public class BfresImporter
                 for (var j = 0; j < bids.Count; j++)
                 {
                     var b = bids[j];
-                    for (var i = 0; i < b.Length; i++) b[i] = shape.SkinBoneIndices[0];
+                    for (var i = 0; i < b.Length; i++) b[i] = 0;
 
                     bids[j] = b;
                 }
 
 
             mesh.BoneIDs = bids.ToArray();
+
+            if (w0.Length == 0)
+                w0 = new Vec4[mesh.BoneIDs.Length];
+            for (var i = 0; i < mesh.BoneIDs.Length; i++)
+            {
+                var w = new Vec4(1, 0, 0, 0);
+                w0[i] = w;
+            }
 
             List<float[]> wghts = new();
             foreach (var vec4 in w0) wghts.Add(vec4.ToFltArray());
@@ -291,7 +299,7 @@ public class BfresImporter
                 mesh.VertexWeights = new float[mesh.Vertices.Length][];
                 for (var i = 0; i < mesh.BoneIDs.Length; i++)
                 {
-                    mesh.BoneIDs[i] = new[] { 1, -1, -1, -1 };
+                    mesh.BoneIDs[i] = new[] { 0, -1, -1, -1 };
                     mesh.VertexWeights[i] = new[] { 1.0f, 0, 0, 0 };
                 }
             }

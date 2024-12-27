@@ -22,6 +22,7 @@ public partial class ModelUtility
 
         public Vec4()
         {
+            W = 1;
         }
 
         public Vec4(Vector4 v)
