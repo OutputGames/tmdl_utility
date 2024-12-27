@@ -1,4 +1,5 @@
-﻿using BfresLibrary;
+﻿using System.Numerics;
+using BfresLibrary;
 using BfresLibrary.GX2;
 using BfresLibrary.Helpers;
 using BfresLibrary.Switch;
@@ -94,10 +95,10 @@ public class BfresImporter
                 ExtractAnimation(boneAnim, anim, out var channel, out var basePos, out var baseRot, out var baseScl);
 
 
-                channel.Positions.Add(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
+                channel.AddPosition(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
 
-                channel.Rotations.Add(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
-                channel.Scales.Add(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Scale)));
+                channel.AddRotation(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
+                channel.AddScale(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Scale)));
 
                 if (boneAnim.ApplyScaleOne)
                 {
@@ -355,12 +356,11 @@ public class BfresImporter
                 //skeletonBone.offsetMatrix = Matrix4x4.Transpose(skeletonBone.offsetMatrix);
             }
 
-            /*
+
             var m = MatrixExtensions.CalculateTransformMatrix(bone);
             Matrix4x4.Invert(m, out m);
             m = Matrix4x4.Transpose(m);
-            */
-            //skeletonBone.offsetMatrix = m;
+            skeletonBone.offsetMatrix = m;
 
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }
@@ -483,6 +483,9 @@ public class BfresImporter
             {
                 var curve = boneAnim.Curves[i1];
 
+                var scale = curve.Scale;
+
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.TranslateX))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -492,6 +495,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.TranslateY))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -501,6 +505,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.TranslateZ))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -510,6 +515,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateX))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -519,6 +525,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateY))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -528,6 +535,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateZ))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -537,6 +545,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateW))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -546,6 +555,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.ScaleX))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -555,6 +565,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.ScaleY))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
@@ -564,6 +575,7 @@ public class BfresImporter
                     }
                 }
 
+                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.ScaleZ))
                 {
                     var helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
