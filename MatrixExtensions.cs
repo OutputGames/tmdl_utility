@@ -1,5 +1,7 @@
 using System.Numerics;
+using BfresLibrary;
 using Syroot.Maths;
+using tmdl_utility;
 using Vector3 = System.Numerics.Vector3;
 
 public static class MatrixExtensions
@@ -35,7 +37,50 @@ public static class MatrixExtensions
             matrix.M11, matrix.M12, matrix.M13, 0,
             matrix.M12, matrix.M22, matrix.M23, 0,
             matrix.M13, matrix.M32, matrix.M33, 0,
-            matrix.M14, matrix.M24, matrix.M34, 1);
+            matrix.M14, matrix.M24, matrix.M34, 0);
+    }
+
+    public static Matrix4x4 CalculateTransformMatrix(Bone bone)
+    {
+        var trans = Matrix4x4.CreateTranslation(new Vector3(bone.Position.X, bone.Position.Y, bone.Position.Z));
+        var scale = Matrix4x4.CreateScale(new Vector3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z));
+
+        var quat = Matrix4x4.Identity;
+
+        if (bone.FlagsRotation == BoneFlagsRotation.EulerXYZ)
+            quat = Matrix4x4.CreateFromQuaternion(
+                new ModelUtility.Vec4(new ModelUtility.Vec3(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.X)));
+        else
+            quat = Matrix4x4.CreateFromQuaternion(new ModelUtility.Vec4(bone.Rotation.X, bone.Rotation.Y,
+                bone.Rotation.Z, bone.Rotation.W));
+
+        return Matrix4x4.Multiply(quat, trans);
+    }
+
+    public static Matrix3x4 ConverMatrix3X4(this Matrix4x4 matrix)
+    {
+        return new Matrix3x4(matrix.M11, matrix.M12, matrix.M13, matrix.M14, matrix.M21, matrix.M22, matrix.M23,
+            matrix.M24, matrix.M31, matrix.M32, matrix.M33, matrix.M34);
+    }
+
+    public static Matrices CalculateInverseMatrix(Bone bone, Skeleton skeleton)
+    {
+        var matrices = new Matrices();
+
+        //Get parent transform for a smooth matrix
+        if (bone.ParentIndex != -1)
+            matrices.transform *= CalculateInverseMatrix(skeleton.Bones[bone.ParentIndex], skeleton).transform;
+        else
+            matrices.transform = Matrix4x4.Identity;
+
+        matrices.transform = Matrix4x4.Multiply(CalculateTransformMatrix(bone), matrices.transform);
+
+        Matrix4x4 Inverse;
+        Matrix4x4.Invert(matrices.transform, out Inverse);
+
+        matrices.inverse = Inverse;
+
+        return matrices;
     }
 
     public class Matrices
