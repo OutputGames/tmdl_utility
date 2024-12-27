@@ -56,25 +56,6 @@ public partial class ModelUtility
             W = v.W;
         }
 
-        public Vec4(Vec3 euler)
-        {
-            var yaw = euler.Y;
-            var pitch = euler.X;
-            var roll = euler.Z;
-
-            var cy = Math.Cos(yaw * 0.5);
-            var sy = Math.Sin(yaw * 0.5);
-            var cp = Math.Cos(pitch * 0.5);
-            var sp = Math.Sin(pitch * 0.5);
-            var cr = Math.Cos(roll * 0.5);
-            var sr = Math.Sin(roll * 0.5);
-
-            W = (float)(cr * cp * cy + sr * sp * sy);
-            X = (float)(sr * cp * cy - cr * sp * sy);
-            Y = (float)(cr * sp * cy + sr * cp * sy);
-            Z = (float)(cr * cp * sy - sr * sp * cy);
-        }
-
         public float this[int index]
         {
             get
@@ -129,6 +110,21 @@ public partial class ModelUtility
 
                 return new Vec4(X / mag, Y / mag, Z / mag, W / mag);
             }
+        }
+
+        public static Vec4 FromEuler(Vec3 euler)
+        {
+            var xRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, euler.X);
+            var yRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, euler.Y);
+            var zRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, euler.Z);
+
+            var q = zRotation * yRotation * xRotation;
+
+            if (q.W < 0)
+                q *= -1;
+
+            //return xRotation * yRotation * zRotation;
+            return new Vec4(q);
         }
 
         public static Vec4 operator *(Vec4 value1, Quaternion value2)
@@ -193,6 +189,26 @@ public partial class ModelUtility
             writer.Write(Z);
             writer.Write(Y);
             writer.Write(X);
+        }
+
+        public Vec3 ToEuler()
+        {
+            var mat = Matrix4x4.CreateFromQuaternion(this);
+            float x, y, z;
+            y = (float)Math.Asin(double.Clamp(mat.M13, -1, 1));
+
+            if (Math.Abs(mat.M13) < 0.99999)
+            {
+                x = (float)Math.Atan2(-mat.M23, mat.M33);
+                z = (float)Math.Atan2(-mat.M12, mat.M11);
+            }
+            else
+            {
+                x = (float)Math.Atan2(mat.M32, mat.M22);
+                z = 0;
+            }
+
+            return new Vector3(x, y, z) * -1;
         }
     }
 
