@@ -235,7 +235,11 @@ public partial class ModelUtility
                             if (boneId == -1)
                                 continue;
 
-                            var bone = mesh.Bones[boneId];
+                            var realBone = model.Skeleton.bones[boneId];
+                            var bone = mesh.Bones.Find(b => b.Name == realBone.name);
+
+                            if (weight > 1) throw new Exception();
+
                             bone.VertexWeights.Add(new VertexWeight(i, weight));
                         }
                     }
@@ -249,6 +253,7 @@ public partial class ModelUtility
 
                     animation.DurationInTicks = modelAnimation.duration;
                     animation.TicksPerSecond = modelAnimation.ticksPerSecond;
+                    animation.Name = modelAnimation.name;
 
                     foreach (var (key, nodeChannel) in modelAnimation.nodeChannels)
                     {

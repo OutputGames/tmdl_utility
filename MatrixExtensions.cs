@@ -47,9 +47,12 @@ public static class MatrixExtensions
 
         var quat = Matrix4x4.Identity;
 
+        var rot = new ModelUtility.Vec4(bone.Rotation);
+        var eul = rot.ToEuler();
+
         if (bone.FlagsRotation == BoneFlagsRotation.EulerXYZ)
             quat = Matrix4x4.CreateFromQuaternion(
-                new ModelUtility.Vec4(new ModelUtility.Vec3(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.X)));
+                ModelUtility.Vec4.FromEuler(eul));
         else
             quat = Matrix4x4.CreateFromQuaternion(new ModelUtility.Vec4(bone.Rotation.X, bone.Rotation.Y,
                 bone.Rotation.Z, bone.Rotation.W));

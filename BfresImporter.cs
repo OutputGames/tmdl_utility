@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using BfresLibrary;
+﻿using BfresLibrary;
 using BfresLibrary.GX2;
 using BfresLibrary.Helpers;
 using BfresLibrary.Switch;
@@ -143,9 +142,9 @@ public class BfresImporter
                     if (anim.FlagsRotate == SkeletalAnimFlagsRotate.EulerXYZ)
                         foreach (var channelRotation in channel.Rotations)
                         {
-                            var euler = channelRotation.value.ToVec3();
+                            var euler = channelRotation.value.ToEuler();
 
-                            var val = new Vec4(euler);
+                            var val = Vec4.FromEuler(euler);
                             channelRotation.value = val;
                         }
 
@@ -199,9 +198,14 @@ public class BfresImporter
 
             bNode.Position = new Vec3(bone.Position.X, bone.Position.Y, bone.Position.Z);
             if (bone.FlagsRotation != BoneFlagsRotation.EulerXYZ)
+            {
                 bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+            }
             else
-                bNode.Rotation = new Vec4(new Vec3(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z));
+            {
+                var eul = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+                bNode.Rotation = Vec4.FromEuler(eul.ToEuler());
+            }
 
             bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
 
@@ -237,19 +241,25 @@ public class BfresImporter
             mesh.UV0 = uv0.ToVec2Array();
             List<int[]> bids = new();
             foreach (var vec4 in id0)
+            {
                 //vec4.X -= 1;
                 //vec4.Y -= 1;
                 //vec4.Z -= 1;
                 //vec4.W -= 1;
-                bids.Add(vec4.ToArray());
+                int[] bid = { -1, -1, -1, -1 };
+                for (var i = 0; i < shape.VertexSkinCount; i++) bid[i] = (int)vec4[i];
+                bids.Add(bid);
+            }
 
             if (shape.SkinBoneIndices.Count > 1)
                 for (var j = 0; j < bids.Count; j++)
                 {
                     var b = bids[j];
-                    for (var i = 0; i < b.Length; i++)
+                    for (var i = 0; i < shape.VertexSkinCount; i++)
                     {
-                        var boneIndices = shape.SkinBoneIndices[b[i]];
+                        var k = b[i];
+                        var boneIndices = 0;
+                        boneIndices = resfileModel.Skeleton.MatrixToBoneList[k];
 
                         var bone = resfileModel.Skeleton.Bones[boneIndices];
                         var ogBone = resfileModel.Skeleton.Bones[i];
@@ -328,7 +338,7 @@ public class BfresImporter
             {
                 var mat = resfileModel.Skeleton.InverseModelMatrices;
 
-                //skeletonBone.offsetMatrix = MatrixExtensions.Matrice
+                skeletonBone.offsetMatrix = mat[bone.SmoothMatrixIndex].ConvertMatrix3x4();
 
                 //skeletonBone.offsetMatrix.DecomposeMatrix(out var translation, out var rotation, out var scale);
 
@@ -337,10 +347,12 @@ public class BfresImporter
                 //skeletonBone.offsetMatrix = Matrix4x4.Transpose(skeletonBone.offsetMatrix);
             }
 
+            /*
             var m = MatrixExtensions.CalculateTransformMatrix(bone);
             Matrix4x4.Invert(m, out m);
             m = Matrix4x4.Transpose(m);
-            skeletonBone.offsetMatrix = m;
+            */
+            //skeletonBone.offsetMatrix = m;
 
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }
