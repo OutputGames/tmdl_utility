@@ -260,16 +260,20 @@ public partial class ModelUtility
                         var channel = new NodeAnimationChannel();
                         channel.NodeName = nodeChannel.NodeName;
 
+                        var interpolation = AnimationInterpolation.CubicSpline;
+
                         foreach (var nodeChannelPosition in nodeChannel.Positions)
                             channel.PositionKeys.Add(new VectorKey(nodeChannelPosition.Time,
-                                nodeChannelPosition.value));
+                                nodeChannelPosition.value, interpolation));
 
                         foreach (var nodeChannelRotation in nodeChannel.Rotations)
                             channel.RotationKeys.Add(new QuaternionKey(nodeChannelRotation.Time,
-                                nodeChannelRotation.value));
+                                nodeChannelRotation.value, interpolation));
 
                         foreach (var nodeChannelScale in nodeChannel.Scales)
-                            channel.PositionKeys.Add(new VectorKey(nodeChannelScale.Time, nodeChannelScale.value));
+                            channel.PositionKeys.Add(new VectorKey(nodeChannelScale.Time, nodeChannelScale.value,
+                                interpolation));
+
 
                         animation.NodeAnimationChannels.Add(channel);
                     }

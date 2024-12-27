@@ -3,6 +3,8 @@ using BfresLibrary;
 using BfresLibrary.GX2;
 using BfresLibrary.Helpers;
 using BfresLibrary.Switch;
+using CsYaz0;
+using SarcLibrary;
 using Syroot.BinaryData;
 using ZstdSharp;
 using static tmdl_utility.ModelUtility;
@@ -22,6 +24,19 @@ public class BfresImporter
             using var decompressor = new Decompressor();
             var decompressed = decompressor.Unwrap(src).ToArray();
             stream.Write(decompressed);
+        }
+        else if (info.Source.EndsWith(".szs"))
+        {
+            var src = File.ReadAllBytes(info.Source);
+
+            var decomp = Yaz0.Decompress(src);
+
+            var sarc = Sarc.FromBinary(decomp);
+
+            foreach (var (path, data) in sarc)
+                if (path.EndsWith(".bfres"))
+                    stream.Write(data);
+                else if (path.EndsWith(".kcl")) Console.WriteLine("Found collision files!");
         }
         else
         {
@@ -74,7 +89,7 @@ public class BfresImporter
 
             animation.name = name;
             animation.duration = anim.FrameCount;
-            animation.ticksPerSecond = 60;
+            animation.ticksPerSecond = 30;
 
             var jk = 0;
             foreach (var resFileModel in resFile.Models)
