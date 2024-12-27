@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using BfresLibrary;
+﻿using BfresLibrary;
 using BfresLibrary.GX2;
 using BfresLibrary.Helpers;
 using BfresLibrary.Switch;
@@ -213,6 +212,7 @@ public class BfresImporter
             else
                 node.SetParent(boneDict.Values.ToList()[bone.ParentIndex]);
 
+
         foreach (var (s, shape) in resfileModel.Shapes)
         {
             var vertexBuffer = resfileModel.VertexBuffers[shape.VertexBufferIndex];
@@ -233,14 +233,11 @@ public class BfresImporter
             mesh.UV0 = uv0.ToVec2Array();
             List<int[]> bids = new();
             foreach (var vec4 in id0)
-            {
-                vec4.X -= 1;
-                vec4.Y -= 1;
-                vec4.Z -= 1;
-                vec4.W -= 1;
-
+                //vec4.X -= 1;
+                //vec4.Y -= 1;
+                //vec4.Z -= 1;
+                //vec4.W -= 1;
                 bids.Add(vec4.ToArray());
-            }
 
             mesh.BoneIDs = bids.ToArray();
 
@@ -303,9 +300,19 @@ public class BfresImporter
 
                 skeletonBone.offsetMatrix = mat[bone.SmoothMatrixIndex].ConvertMatrix3x4();
 
-                skeletonBone.offsetMatrix = Matrix4x4.Transpose(skeletonBone.offsetMatrix);
+                //skeletonBone.offsetMatrix = Matrix4x4.Transpose(skeletonBone.offsetMatrix);
             }
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
+        }
+
+        for (var i = 0; i < 4; i++)
+        {
+            var id = mlist[0].BoneIDs[0][i];
+            if (id == -1)
+                continue;
+
+            Console.WriteLine(id);
+            Console.WriteLine(resfileModel.Skeleton.Bones[id].Name);
         }
 
         model.Materials = matList.ToArray();

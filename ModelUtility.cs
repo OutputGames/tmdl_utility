@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -25,6 +27,14 @@ public partial class ModelUtility
                 scn.Write(outStream);
 
                 outStream.Close();
+
+                var startInfo =
+                    new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\TomatoEditor\\bin\\Debug\\TomatoEditor.exe\"");
+
+                startInfo.WorkingDirectory = "D:\\Code\\ImportantRepos\\TomatoEditor";
+                startInfo.ArgumentList.Add($"{outPath}");
+
+                var proc = Process.Start(startInfo);
             }
             else
             {
