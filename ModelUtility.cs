@@ -14,7 +14,7 @@ public partial class ModelUtility
             else
                 scn = AssimpImporter.LoadAssimp(info);
 
-            var export = true;
+            var export = false;
 
             if (!export)
             {
@@ -32,6 +32,7 @@ public partial class ModelUtility
                     new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\TomatoEditor\\bin\\Debug\\TomatoEditor.exe\"");
 
                 startInfo.WorkingDirectory = "D:\\Code\\ImportantRepos\\TomatoEditor";
+                startInfo.ArgumentList.Add("Model");
                 startInfo.ArgumentList.Add($"{outPath}");
 
                 var proc = Process.Start(startInfo);
