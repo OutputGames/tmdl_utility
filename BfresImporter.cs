@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using BfresLibrary;
+﻿using BfresLibrary;
 using BfresLibrary.GX2;
 using BfresLibrary.Helpers;
 using BfresLibrary.Switch;
@@ -393,7 +392,7 @@ public class BfresImporter
             {
                 var mat = resfileModel.Skeleton.InverseModelMatrices;
 
-                skeletonBone.offsetMatrix = mat[bone.SmoothMatrixIndex].ConvertMatrix3x4();
+                //skeletonBone.offsetMatrix = resfileModel.Skeleton.InverseModelMatrices
 
                 //skeletonBone.offsetMatrix.DecomposeMatrix(out var translation, out var rotation, out var scale);
 
@@ -403,10 +402,10 @@ public class BfresImporter
             }
 
 
-            var m = skeletonBone.offsetMatrix;
-            Matrix4x4.Invert(m, out m);
-            m = Matrix4x4.Transpose(m);
-            //skeletonBone.offsetMatrix = m;
+            var m = MatrixExtensions.CalculateInverseMatrix(bone, resfileModel.Skeleton).inverse;
+            //Matrix4x4.Invert(m, out m);
+            //m = Matrix4x4.Transpose(m);
+            skeletonBone.offsetMatrix = m;
 
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }
