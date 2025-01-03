@@ -263,10 +263,32 @@ public class BfresImporter
                 //vec4.Z -= 1;
                 //vec4.W -= 1;
                 int[] bid = { -1, -1, -1, -1 };
-                for (var i = 0; i < shape.VertexSkinCount; i++) bid[i] = (int)vec4[i];
+
+                for (var i = 0; i < shape.VertexSkinCount; i++)
+                {
+                    if (shape.SkinBoneIndices.Count > 1)
+                    {
+                        var id = (int)vec4[i];
+                        vec4[i] = shape.SkinBoneIndices[id];
+                    }
+
+                    var preId = (int)vec4[i];
+                    var bone = resfileModel.Skeleton.BoneList[preId];
+
+                    var newId = boneDict.Keys.ToList().IndexOf(bone);
+                    var newBone = resfileModel.Skeleton.BoneList[newId];
+
+
+                    if (preId != newId)
+                        Console.WriteLine($"Converted boneIds: {bone.Name} : {newBone.Name}");
+
+                    bid[i] = (int)vec4[i];
+                }
+
                 bids.Add(bid);
             }
 
+            /*
             if (shape.SkinBoneIndices.Count > 1)
                 for (var j = 0; j < bids.Count; j++)
                 {
@@ -293,6 +315,7 @@ public class BfresImporter
 
                     bids[j] = b;
                 }
+            */
 
 
             mesh.BoneIDs = bids.ToArray();
