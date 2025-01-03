@@ -211,6 +211,11 @@ public partial class ModelUtility
 
             return new Vector3(x, y, z) * -1;
         }
+
+        public override string ToString()
+        {
+            return $"({X},{Y},{Z},{W})";
+        }
     }
 
     public class Vec3

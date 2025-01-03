@@ -31,13 +31,27 @@ public static class MatrixExtensions
         rotation = Quaternion.CreateFromRotationMatrix(normalizedMatrix);
     }
 
-    public static Matrix4x4 ConvertMatrix3x4(this Matrix3x4 matrix)
+    public static Matrix4x4 ConvertMatrix3x4(this Matrix3x4 mat)
     {
-        return new Matrix4x4(
-            matrix.M11, matrix.M12, matrix.M13, 0,
-            matrix.M12, matrix.M22, matrix.M23, 0,
-            matrix.M13, matrix.M32, matrix.M33, 0,
-            matrix.M14, matrix.M24, matrix.M34, 0);
+        return new Matrix4x4
+        {
+            M11 = mat.M11,
+            M21 = mat.M12,
+            M31 = mat.M13,
+            M41 = mat.M14,
+            M12 = mat.M21,
+            M22 = mat.M22,
+            M32 = mat.M23,
+            M42 = mat.M24,
+            M13 = mat.M31,
+            M23 = mat.M32,
+            M33 = mat.M33,
+            M43 = mat.M34,
+            M14 = 0,
+            M24 = 0,
+            M34 = 0,
+            M44 = 0
+        };
     }
 
     public static Matrix4x4 CalculateTransformMatrix(Bone bone)
