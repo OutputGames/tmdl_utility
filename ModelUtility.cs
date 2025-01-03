@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -28,6 +26,7 @@ public partial class ModelUtility
 
                 outStream.Close();
 
+                /*
                 var startInfo =
                     new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\TomatoEditor\\bin\\Debug\\TomatoEditor.exe\"");
 
@@ -36,6 +35,7 @@ public partial class ModelUtility
                 startInfo.ArgumentList.Add($"{outPath}");
 
                 var proc = Process.Start(startInfo);
+                */
             }
             else
             {

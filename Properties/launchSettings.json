@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\ProjectLumina\\resources\\model\\pik_rev1_no_mod.glb\" \"out/\"",
+      "commandLineArgs": "Single D:\\Code\\ImportantRepos\\tmdl_utility\\test\\Player00.bfres \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }
