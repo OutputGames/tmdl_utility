@@ -255,6 +255,7 @@ public class BfresImporter
             mesh.Vertices = pos.ToVec3Array();
             mesh.Normals = nrm.ToVec3Array();
             mesh.UV0 = uv0.ToVec2Array();
+
             List<int[]> bids = new();
             foreach (var vec4 in id0)
             {
@@ -266,12 +267,6 @@ public class BfresImporter
 
                 for (var i = 0; i < shape.VertexSkinCount; i++)
                 {
-                    if (shape.SkinBoneIndices.Count > 1)
-                    {
-                        var id = (int)vec4[i];
-                        vec4[i] = shape.SkinBoneIndices[id];
-                    }
-
                     var preId = (int)vec4[i];
                     var bone = resfileModel.Skeleton.BoneList[preId];
 
@@ -288,11 +283,12 @@ public class BfresImporter
                 bids.Add(bid);
             }
 
-            /*
+
             if (shape.SkinBoneIndices.Count > 1)
                 for (var j = 0; j < bids.Count; j++)
                 {
                     var b = bids[j];
+                    var ogb = bids[j];
                     for (var i = 0; i < shape.VertexSkinCount; i++)
                     {
                         var k = b[i];
@@ -300,10 +296,14 @@ public class BfresImporter
                         boneIndices = resfileModel.Skeleton.MatrixToBoneList[k];
 
                         var bone = resfileModel.Skeleton.Bones[boneIndices];
-                        var ogBone = resfileModel.Skeleton.Bones[i];
+                        var ogBone = resfileModel.Skeleton.Bones[k];
+
+                        if (w0[j][i] <= float.Epsilon) boneIndices = -1;
 
                         b[i] = boneIndices;
                     }
+
+                    for (int i = shape.VertexSkinCount; i < 4; i++) b[i] = -1;
 
                     bids[j] = b;
                 }
@@ -315,17 +315,18 @@ public class BfresImporter
 
                     bids[j] = b;
                 }
-            */
 
 
             mesh.BoneIDs = bids.ToArray();
 
             if (w0.Length == 0)
-                w0 = new Vec4[mesh.BoneIDs.Length];
-            for (var i = 0; i < mesh.BoneIDs.Length; i++)
             {
-                var w = new Vec4(1, 0, 0, 0);
-                w0[i] = w;
+                w0 = new Vec4[mesh.BoneIDs.Length];
+                for (var i = 0; i < mesh.BoneIDs.Length; i++)
+                {
+                    var w = new Vec4(1, 0, 0, 0);
+                    w0[i] = w;
+                }
             }
 
             List<float[]> wghts = new();
@@ -349,6 +350,13 @@ public class BfresImporter
             for (var i = 0; i < shapeMesh.IndexCount; i++) mesh.Indices[i] = (ushort)(idxs[i] + shapeMesh.FirstVertex);
 
             vct += mesh.Vertices.Length;
+
+            if (idxs.Count > 1938)
+            {
+                var idx = idxs[1938];
+                Console.WriteLine(
+                    $"1938 ({idx}): ({mesh.BoneIDs[(int)idx][0]}, {mesh.BoneIDs[(int)idx][1]}, {mesh.BoneIDs[(int)idx][2]}, {mesh.BoneIDs[(int)idx][3]})");
+            }
 
             mesh.MaterialIndex = shape.MaterialIndex;
             mshCt++;
@@ -395,10 +403,10 @@ public class BfresImporter
             }
 
 
-            var m = MatrixExtensions.CalculateTransformMatrix(bone);
+            var m = skeletonBone.offsetMatrix;
             Matrix4x4.Invert(m, out m);
             m = Matrix4x4.Transpose(m);
-            skeletonBone.offsetMatrix = m;
+            //skeletonBone.offsetMatrix = m;
 
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }

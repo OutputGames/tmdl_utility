@@ -98,7 +98,7 @@ public partial class ModelUtility
             Rotation.Write(writer);
             Scale.Write(writer);
 
-            for (var i = 0; i < 3; i++)
+            for (var i = 0; i < 4; i++)
             for (var j = 0; j < 4; j++)
                 writer.Write(offsetMatrix[i, j]);
 
