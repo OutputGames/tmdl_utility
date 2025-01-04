@@ -51,7 +51,7 @@ public class BfresImporter
         var nct = -1;
         var mshCt = -1;
 
-        var textures = new Texture[resFile.Textures.Count];
+        var textures = new List<Texture>();
         ExtractTextures(resFile, textures);
 
         #region Bfres Model Loading
@@ -190,7 +190,7 @@ public class BfresImporter
     }
 
     private static (int, ModelUtility.Model, Node) ExtractModel(Model resfileModel, int nct, ResFile resFile,
-        Texture[] textures, Scene scene,
+        List<Texture> textures, Scene scene,
         ref int mshCt)
     {
         var vct = 0;
@@ -380,7 +380,7 @@ public class BfresImporter
             throw new Exception($"Vertex counts do not match. {vct}, {resfileModel.TotalVertexCount}");
 
         model.Meshes = mlist.ToArray();
-        model.Textures = textures;
+        model.Textures = textures.ToArray();
         model.Skeleton = new ModelUtility.Skeleton(armatureNode.children[0]);
 
         foreach (var skeletonBone in model.Skeleton.bones)
@@ -427,7 +427,7 @@ public class BfresImporter
         return (nct, model, armatureNode);
     }
 
-    private static void ExtractTextures(ResFile resFile, Texture[] textures)
+    private static void ExtractTextures(ResFile resFile, List<Texture> textures)
     {
         if (resFile.IsPlatformSwitch)
         {
@@ -458,7 +458,10 @@ public class BfresImporter
 
                 tex.data = imgData;
 
-                textures[ind] = tex;
+                if (tex.data == null)
+                    continue;
+
+                textures.Add(tex);
 
                 ind++;
             }
@@ -503,7 +506,10 @@ public class BfresImporter
 
                 tex.data = imgData;
 
-                textures[ind] = tex;
+                if (tex.data == null)
+                    continue;
+
+                textures.Add(tex);
 
                 ind++;
             }

@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"C:\\Users\\chris\\OneDrive\\Roms\\splat3\\1.1.1\\Model\\Player03.bfres.zs\" \"out/\"",
+      "commandLineArgs": "Single \"D:\\Code\\ImportantRepos\\tmdl_utility\\test\\Player00.szs\" \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }

@@ -7,44 +7,42 @@ public partial class ModelUtility
 {
     public class Mesh
     {
-        public Vec3[] Vertices;
-        public Vec3[] Normals;
-        public Vec2[] UV0;
         public int[][] BoneIDs;
-        public float[][] VertexWeights;
 
-        public UInt16[] Indices;
+        public ushort[] Indices;
 
 
         public int MaterialIndex;
         public string Name;
+        public Vec3[] Normals;
+        public Vec2[] UV0;
+        public float[][] VertexWeights;
+        public Vec3[] Vertices;
     }
 
     public class Texture
     {
-        public int width, height;
-        public byte[] data;
         public int channelCount;
+        public byte[] data;
         public string name;
+        public int width, height;
 
         public void Export(string path)
         {
-            Bitmap b = new Bitmap(width, height);
+            var b = new Bitmap(width, height);
 
-            for (int x = 0; x < width; x++)
+            for (var x = 0; x < width; x++)
+            for (var y = 0; y < height; y++)
             {
-                for (int y = 0; y < height; y++)
+                var c = new byte[4];
+                for (var i = 0; i < channelCount; i++)
                 {
-                    byte[] c = new byte[4];
-                    for (int i = 0; i < channelCount; i++)
-                    {
-                        var data = this.data[
-                            (x + y * width) * channelCount + i];
-                        c[i] = data;
-                    }
-
-                    b.SetPixel(x, y, Color.FromArgb(c[3], c[0], c[1], c[2]));
+                    var data = this.data[
+                        (x + y * width) * channelCount + i];
+                    c[i] = data;
                 }
+
+                b.SetPixel(x, y, Color.FromArgb(c[3], c[0], c[1], c[2]));
             }
 
             b.Save(path, ImageFormat.Png);
@@ -54,19 +52,19 @@ public partial class ModelUtility
     public class Material
     {
         public string name;
-        public Dictionary<string, string> Textures = new Dictionary<string, string>();
+        public Dictionary<string, string> Textures = new();
     }
 
     public class Model
     {
-        public Mesh[] Meshes;
-        public Texture[] Textures;
-        public Material[] Materials;
-        public Skeleton Skeleton;
         public Animation[] Animations;
+        public Material[] Materials;
+        public Mesh[] Meshes;
 
         public float ModelScale = 1;
         public string Name;
+        public Skeleton Skeleton;
+        public Texture[] Textures;
 
         public void Write(ModelWriter writer)
         {
@@ -102,56 +100,39 @@ public partial class ModelUtility
                     {
                         var boneIdx = mesh.BoneIDs[i];
                         writer.Write(boneIdx.Length);
-                        for (int j = 0; j < boneIdx.Length; j++)
-                        {
-                            writer.Write(boneIdx[j]);
-                        }
+                        for (var j = 0; j < boneIdx.Length; j++) writer.Write(boneIdx[j]);
 
                         if (mesh.VertexWeights.Length > 0)
                         {
                             var weights = mesh.VertexWeights[i];
                             writer.Write(weights.Length);
-                            for (int j = 0; j < weights.Length; j++)
-                            {
-                                writer.Write(weights[j]);
-                            }
+                            for (var j = 0; j < weights.Length; j++) writer.Write(weights[j]);
                         }
                         else
                         {
                             writer.Write(4);
-                            for (int j = 0; j <4; j++)
-                            {
-                                writer.Write(1.0f);
-                            }
+                            for (var j = 0; j < 4; j++) writer.Write(1.0f);
                         }
                     }
                     else
                     {
                         writer.Write(4);
-                        for (int j = 0; j < 4; j++)
-                        {
-                            writer.Write(-1);
-                        }
+                        for (var j = 0; j < 4; j++) writer.Write(-1);
 
 
                         writer.Write(4);
-                        for (int j = 0; j < 4; j++)
-                        {
-                            writer.Write(0);
-                        }
+                        for (var j = 0; j < 4; j++) writer.Write(0);
                     }
                 }
 
 
                 writer.WriteString("TIDX");
                 writer.Write(mesh.Indices.Length);
-                foreach (var meshIndex in mesh.Indices)
-                {
-                    writer.Write(meshIndex);
-                }
+                foreach (var meshIndex in mesh.Indices) writer.Write(meshIndex);
 
                 writer.Write(mesh.MaterialIndex);
             }
+
 
             writer.Write(Textures.Length);
             foreach (var texture in Textures)
@@ -167,16 +148,12 @@ public partial class ModelUtility
                 //writer.Write(texture.data);
 
 
-                for (int y = 0; y < texture.height; y++)
+                for (var y = 0; y < texture.height; y++)
+                for (var x = 0; x < texture.width; x++)
+                for (var i = 0; i < texture.channelCount; i++)
                 {
-                    for (int x = 0; x < texture.width; x++)
-                    {
-                        for (int i = 0; i < texture.channelCount; i++)
-                        {
-                            var idx = (y * texture.width + x) * texture.channelCount;
-                            writer.Write(texture.data[idx + i]);
-                        }
-                    }
+                    var idx = (y * texture.width + x) * texture.channelCount;
+                    writer.Write(texture.data[idx + i]);
                 }
             }
 
@@ -196,13 +173,10 @@ public partial class ModelUtility
             }
 
             writer.WriteString("TSKL");
-            this.Skeleton.Write(writer);
+            Skeleton.Write(writer);
 
             writer.Write(Animations.Length);
-            foreach (var anim in Animations)
-            {
-                anim.Write(writer);
-            }
+            foreach (var anim in Animations) anim.Write(writer);
         }
     }
 }
