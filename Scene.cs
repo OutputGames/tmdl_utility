@@ -271,7 +271,7 @@ public partial class ModelUtility
                                 nodeChannelRotation.value, interpolation));
 
                         foreach (var nodeChannelScale in nodeChannel.Scales)
-                            channel.PositionKeys.Add(new VectorKey(nodeChannelScale.Time, nodeChannelScale.value,
+                            channel.ScalingKeys.Add(new VectorKey(nodeChannelScale.Time, nodeChannelScale.value,
                                 interpolation));
 
 

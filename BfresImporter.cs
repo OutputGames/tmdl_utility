@@ -399,13 +399,13 @@ public class BfresImporter
                 //Matrix4x4.Invert(skeletonBone.offsetMatrix, out skeletonBone.offsetMatrix);
 
                 //skeletonBone.offsetMatrix = Matrix4x4.Transpose(skeletonBone.offsetMatrix);
+
+                var m = MatrixExtensions.CalculateInverseMatrix(bone, resfileModel.Skeleton).inverse;
+                //Matrix4x4.Invert(m, out m);
+                //m = Matrix4x4.Transpose(m);
+                skeletonBone.offsetMatrix = m;
             }
 
-
-            var m = MatrixExtensions.CalculateInverseMatrix(bone, resfileModel.Skeleton).inverse;
-            //Matrix4x4.Invert(m, out m);
-            //m = Matrix4x4.Transpose(m);
-            skeletonBone.offsetMatrix = m;
 
             //skeletonBone.offsetMatrix = ModelUtility.Bone.CalculateOffsetMatrix(skeletonBone).Item2;
         }

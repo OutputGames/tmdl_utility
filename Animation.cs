@@ -196,7 +196,8 @@ public partial class ModelUtility
                     channel.Positions.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
 
                 foreach (var pkey in ch.RotationKeys)
-                    channel.Rotations.Add(new Key<Vec4>((float)pkey.Time, new Vec4(pkey.Value)));
+                    channel.Rotations.Add(new Key<Vec4>((float)pkey.Time,
+                        new Vec4(pkey.Value.W, pkey.Value.Z, pkey.Value.Y, pkey.Value.X)));
 
                 foreach (var pkey in ch.ScalingKeys)
                     channel.Scales.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));

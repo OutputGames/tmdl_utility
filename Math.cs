@@ -309,6 +309,11 @@ public partial class ModelUtility
         {
             return new Vec3(-v1.X, -v1.Y, -v1.Z);
         }
+
+        public override string ToString()
+        {
+            return $"({X},{Y},{Z})";
+        }
     }
 
     public class Vec2
@@ -334,6 +339,11 @@ public partial class ModelUtility
         public static implicit operator Vec2(Vector2 d)
         {
             return new Vec2(d.X, d.Y);
+        }
+
+        public override string ToString()
+        {
+            return $"({X},{Y})";
         }
     }
 }

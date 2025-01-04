@@ -124,6 +124,12 @@ public class AssimpImporter
         }
 
         model.Skeleton = new ModelUtility.Skeleton(mscene.GetNode(boneDict.Keys.ToList()[0]));
+        foreach (var sceneMesh in scene.Meshes)
+        foreach (var bone in sceneMesh.Bones)
+        {
+            var b = model.Skeleton.GetBone(bone.Name);
+            if (b != null) b.offsetMatrix = bone.OffsetMatrix;
+        }
 
         foreach (var skeletonBone in model.Skeleton.bones) mscene.RemoveNode(skeletonBone.name);
         mscene.RemoveNode("Armature");
@@ -216,7 +222,7 @@ public class AssimpImporter
         return mscene;
     }
 
-    public static ModelUtility.Node ProcessAiNode(Assimp.Node ai, int count = -1, bool isBone = false)
+    public static ModelUtility.Node ProcessAiNode(Node ai, int count = -1, bool isBone = false)
     {
         var node = new ModelUtility.Node();
 

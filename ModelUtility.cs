@@ -12,7 +12,7 @@ public partial class ModelUtility
             else
                 scn = AssimpImporter.LoadAssimp(info);
 
-            var export = true;
+            var export = false;
 
             if (!export)
             {
