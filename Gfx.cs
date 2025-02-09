@@ -47,6 +47,31 @@ public partial class ModelUtility
 
             b.Save(path, ImageFormat.Png);
         }
+
+        public byte[] Export()
+        {
+            var b = new Bitmap(width, height);
+
+            for (var x = 0; x < width; x++)
+            for (var y = 0; y < height; y++)
+            {
+                var c = new byte[4];
+                for (var i = 0; i < channelCount; i++)
+                {
+                    var data = this.data[(x + y * width) * channelCount + i];
+                    c[i] = data;
+                }
+
+                b.SetPixel(x, y, Color.FromArgb(c[3], c[0], c[1], c[2]));
+            }
+
+
+            using (var ms = new MemoryStream())
+            {
+                b.Save(ms, ImageFormat.Png);
+                return ms.ToArray();
+            }
+        }
     }
 
     public class Material

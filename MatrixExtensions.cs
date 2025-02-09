@@ -31,6 +31,31 @@ public static class MatrixExtensions
         rotation = Quaternion.CreateFromRotationMatrix(normalizedMatrix);
     }
 
+    public static void AI_DecomposeMatrix(this Matrix4x4 matrix, out Vector3 translation, out Quaternion rotation,
+        out Vector3 scale)
+    {
+        // Extract translation
+        translation = new Vector3(matrix.M14, matrix.M24, matrix.M34);
+
+        // Extract scale
+        scale = new Vector3(
+            new Vector3(matrix.M11, matrix.M21, matrix.M31).Length(),
+            new Vector3(matrix.M12, matrix.M22, matrix.M32).Length(),
+            new Vector3(matrix.M13, matrix.M23, matrix.M33).Length()
+        );
+
+        // Normalize the matrix to remove the scale from the rotation
+        var normalizedMatrix = new Matrix4x4(
+            matrix.M11 / scale.X, matrix.M21 / scale.X, matrix.M31 / scale.X, 0.0f,
+            matrix.M12 / scale.Y, matrix.M22 / scale.Y, matrix.M23 / scale.Y, 0.0f,
+            matrix.M13 / scale.Z, matrix.M23 / scale.Z, matrix.M33 / scale.Z, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        );
+
+        // Extract rotation
+        rotation = Quaternion.CreateFromRotationMatrix(normalizedMatrix);
+    }
+
     public static Matrix4x4 ConvertMatrix3x4(this Matrix3x4 mat)
     {
         return new Matrix4x4
@@ -71,7 +96,10 @@ public static class MatrixExtensions
             quat = Matrix4x4.CreateFromQuaternion(new ModelUtility.Vec4(bone.Rotation.X, bone.Rotation.Y,
                 bone.Rotation.Z, bone.Rotation.W));
 
-        return Matrix4x4.Multiply(quat, trans);
+        quat = Matrix4x4.CreateFromQuaternion(new ModelUtility.Vec4(bone.Rotation.X, bone.Rotation.Y,
+            bone.Rotation.Z, bone.Rotation.W));
+
+        return scale * quat * trans;
     }
 
     public static Matrix3x4 ConverMatrix3X4(this Matrix4x4 matrix)
@@ -86,11 +114,16 @@ public static class MatrixExtensions
 
         //Get parent transform for a smooth matrix
         if (bone.ParentIndex != -1)
-            matrices.transform *= CalculateInverseMatrix(skeleton.Bones[bone.ParentIndex], skeleton).transform;
+        {
+            var parent = skeleton.Bones[bone.ParentIndex];
+            matrices.transform *= CalculateInverseMatrix(parent, skeleton).transform;
+        }
         else
+        {
             matrices.transform = Matrix4x4.Identity;
+        }
 
-        matrices.transform = Matrix4x4.Multiply(CalculateTransformMatrix(bone), matrices.transform);
+        matrices.transform *= CalculateTransformMatrix(bone);
 
         Matrix4x4 Inverse;
         Matrix4x4.Invert(matrices.transform, out Inverse);

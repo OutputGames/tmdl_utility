@@ -1,4 +1,5 @@
 using System.Numerics;
+using BfresLibrary;
 
 namespace tmdl_utility;
 
@@ -20,6 +21,11 @@ public partial class ModelUtility
         {
             get => timeStamp;
             set => timeStamp = value;
+        }
+
+        public override string ToString()
+        {
+            return $"({Time}) - {value}";
         }
     }
 
@@ -43,6 +49,35 @@ public partial class ModelUtility
             id = node.id;
             this.node = node;
 
+            Position = node.Position;
+            Rotation = node.Rotation;
+            Scale = node.Scale;
+
+            node.IsBone = true;
+        }
+
+        public Bone(BfresLibrary.Bone bone)
+        {
+            name = bone.Name;
+
+            var bNode = new Node(bone.Name);
+
+            bNode.Position = new Vec3(bone.Position.X, bone.Position.Y, bone.Position.Z);
+            if (bone.FlagsRotation != BoneFlagsRotation.EulerXYZ)
+            {
+                bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+            }
+            else
+            {
+                var eul = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+                bNode.Rotation = Vec4.FromEuler(eul.ToEuler());
+            }
+
+            //bNode.Rotation = new Vec4(bone.Rotation.X, bone.Rotation.Y, bone.Rotation.Z, bone.Rotation.W);
+
+            bNode.Scale = new Vec3(bone.Scale.X, bone.Scale.Y, bone.Scale.Z);
+
+            node = bNode;
             Position = node.Position;
             Rotation = node.Rotation;
             Scale = node.Scale;
@@ -105,12 +140,41 @@ public partial class ModelUtility
             writer.Write(children.Count);
             foreach (var child in children) writer.WriteNonSigString(child.name);
         }
+
+        public override string ToString()
+        {
+            return name;
+        }
     }
 
     public class Skeleton
     {
         public List<Bone> bones = new();
         public string rootName;
+
+        public Skeleton(BfresLibrary.Skeleton skl)
+        {
+            rootName = skl.Bones[0].Name;
+
+            bones = new List<Bone>();
+
+            foreach (var bone in skl.BoneList)
+            {
+                var nBone = new Bone(bone);
+
+                bones.Add(nBone);
+            }
+
+            for (var i = 0; i < skl.BoneList.Count; i++)
+            {
+                var bone = skl.BoneList[i];
+                var nBone = bones[i];
+
+                nBone.id = i;
+
+                if (bone.ParentIndex > -1) nBone.SetParent(bones[bone.ParentIndex]);
+            }
+        }
 
         public Skeleton(Node rootNode)
         {
@@ -195,12 +259,12 @@ public partial class ModelUtility
                 foreach (var pkey in ch.PositionKeys)
                     channel.Positions.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
 
-                foreach (var pkey in ch.RotationKeys)
-                    channel.Rotations.Add(new Key<Vec4>((float)pkey.Time,
-                        new Vec4(pkey.Value.W, pkey.Value.Z, pkey.Value.Y, pkey.Value.X)));
+                foreach (var rkey in ch.RotationKeys)
+                    channel.Rotations.Add(new Key<Vec4>((float)rkey.Time,
+                        new Vec4(rkey.Value.X, rkey.Value.Y, rkey.Value.Z, rkey.Value.W)));
 
-                foreach (var pkey in ch.ScalingKeys)
-                    channel.Scales.Add(new Key<Vec3>((float)pkey.Time, new Vec3(pkey.Value)));
+                foreach (var skey in ch.ScalingKeys)
+                    channel.Scales.Add(new Key<Vec3>((float)skey.Time, new Vec3(skey.Value)));
 
                 nodeChannels.Add(channel.NodeName, channel);
             }

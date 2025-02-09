@@ -10,14 +10,17 @@ public class AssimpImporter
         var importer = new AssimpContext();
         //importer.SetConfig();
 
+
         var maxBonesPerVertex = 4;
 
         var scene = importer.ImportFile(info.Source,
-            PostProcessSteps.GenerateNormals | PostProcessSteps.GenerateUVCoords |
+            PostProcessSteps.GenerateUVCoords |
             PostProcessSteps.FlipUVs |
             PostProcessSteps.Triangulate);
 
         Directory.CreateDirectory(info.Dest);
+
+        //importer.ExportFile(scene, info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".fbx", "fbx");
 
         var mscene = new ModelUtility.Scene();
 
@@ -31,7 +34,7 @@ public class AssimpImporter
 
         #region Assimp Models
 
-        var boneDict = new Dictionary<string, Bone>();
+        var boneDict = new Dictionary<string, BoneInfo>();
 
         var model = new ModelUtility.Model();
         model.Meshes = new ModelUtility.Mesh[scene.MeshCount];
@@ -58,21 +61,50 @@ public class AssimpImporter
 
             for (var i = 0; i < sceneMesh.VertexCount; i++)
             {
-                boneIndices[i] = new List<int>();
-                boneWeights[i] = new List<float>();
+                boneIndices[i] = new List<int> { -1, -1, -1, -1 };
+                boneWeights[i] = new List<float> { 0, 0, 0, 0 };
             }
 
 
             foreach (var bone in sceneMesh.Bones)
             {
-                var boneId = sceneMesh.Bones.IndexOf(bone);
+                var boneName = bone.Name;
+
+                var boneId = -1;
+
+                if (!boneDict.ContainsKey(boneName))
+                {
+                    var boneInfo = new BoneInfo();
+
+                    boneInfo.id = boneDict.Count;
+
+                    boneDict.Add(boneName, boneInfo);
+
+                    boneId = boneInfo.id;
+                }
+                else
+                {
+                    boneId = boneDict[boneName].id;
+                }
+
+
                 foreach (var (vertexId, weight) in bone.VertexWeights)
                 {
-                    if (boneIndices[vertexId].Count >= 4)
+                    if (boneIndices[vertexId].Count > 4)
                         continue;
 
-                    boneIndices[vertexId].Add(boneId);
-                    boneWeights[vertexId].Add(weight);
+                    if (vertexId == 40)
+                        Console.Write("");
+
+                    if (weight <= 0.01)
+                        continue;
+                    for (var i = 0; i < 4; ++i)
+                        if (boneIndices[vertexId][i] < 0)
+                        {
+                            boneIndices[vertexId][i] = boneId;
+                            boneWeights[vertexId][i] = weight;
+                            break;
+                        }
                 }
             }
 
@@ -110,10 +142,6 @@ public class AssimpImporter
                 iidx++;
             }
 
-            foreach (var bone in sceneMesh.Bones)
-                if (!boneDict.ContainsKey(bone.Name))
-                    boneDict.Add(bone.Name, bone);
-
             mesh.MaterialIndex = sceneMesh.MaterialIndex;
 
             model.Meshes[scene.Meshes.IndexOf(sceneMesh)] = mesh;
@@ -132,13 +160,14 @@ public class AssimpImporter
         }
 
         foreach (var skeletonBone in model.Skeleton.bones) mscene.RemoveNode(skeletonBone.name);
-        mscene.RemoveNode("Armature");
+
+        var armatureNode = mscene.GetNode("Armature");
+        armatureNode.IsBone = true;
 
         var snode = model.Skeleton.ToNode();
 
-        var armatureNode = modelNode.AddNode("Armature");
-        armatureNode.IsBone = true;
-        armatureNode.AddNode(snode);
+        armatureNode.AddChild(snode);
+        armatureNode.SetParent(modelNode);
 
         model.Textures = new ModelUtility.Texture[scene.TextureCount];
 
@@ -148,7 +177,7 @@ public class AssimpImporter
             var texture = new ModelUtility.Texture();
             texture.width = tex.Width;
             texture.height = tex.Height;
-            texture.name = tex.Filename;
+            //texture.name = tex.Filename;
 
             if (tex.IsCompressed)
             {
@@ -231,7 +260,7 @@ public class AssimpImporter
 
         node.Meshes = ai.MeshIndices;
 
-        ai.Transform.DecomposeMatrix(out var translation, out var rotation, out var scale);
+        ai.Transform.AI_DecomposeMatrix(out var translation, out var rotation, out var scale);
 
         node.Position = new ModelUtility.Vec3(translation);
         node.Rotation = new ModelUtility.Vec4(rotation);
@@ -249,5 +278,10 @@ public class AssimpImporter
         }
 
         return node;
+    }
+
+    public class BoneInfo
+    {
+        public int id;
     }
 }

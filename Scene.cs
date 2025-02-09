@@ -1,6 +1,7 @@
 using System.Diagnostics;
-using System.Numerics;
-using Assimp;
+using Aspose.ThreeD.Entities;
+using Aspose.ThreeD.Shading;
+using Matrix4x4 = System.Numerics.Matrix4x4;
 
 namespace tmdl_utility;
 
@@ -172,220 +173,101 @@ public partial class ModelUtility
         {
             path += "." + format;
 
-            var ctx = new AssimpContext();
-
-            var ascn = new Assimp.Scene();
-
-            ascn.Name = name;
-            ascn.RootNode = rootNode.ToAiNode();
+            var ascn = new Aspose.ThreeD.Scene();
 
             foreach (var model in models)
             {
-                foreach (var modelMesh in model.Meshes)
-                {
-                    var mesh = new Assimp.Mesh();
-                    mesh.Name = modelMesh.Name;
-                    mesh.MaterialIndex = 0;
-                    for (var i = 0; i < modelMesh.Vertices.Length; i++)
-                    {
-                        mesh.Vertices.Add(modelMesh.Vertices[i]);
-                        mesh.Normals.Add(modelMesh.Normals[i]);
-                        //mesh.TextureCoordinateChannels[0].Add(modelMesh.UV0[i]);
-                    }
-
-                    var idxs = new List<int>();
-
-                    foreach (var modelMeshIndex in modelMesh.Indices) idxs.Add(modelMeshIndex);
-
-                    mesh.SetIndices(idxs.ToArray(), 3);
-
-                    var bones = new List<Bone>();
-
-                    foreach (var modelMeshBoneID in modelMesh.BoneIDs)
-                    foreach (var i in modelMeshBoneID)
-                    {
-                        if (i == -1)
-                            continue;
-
-                        var bone = model.Skeleton.bones[i];
-
-                        if (!bones.Contains(bone)) bones.Add(bone);
-                    }
-
-                    foreach (var skeleBone in bones)
-                    {
-                        var bone = new Assimp.Bone();
-
-                        bone.Name = skeleBone.name;
-                        bone.OffsetMatrix = skeleBone.offsetMatrix;
-
-                        mesh.Bones.Add(bone);
-                    }
-
-                    for (var i = 0; i < modelMesh.BoneIDs.Length; i++)
-                    {
-                        var boneIds = modelMesh.BoneIDs[i];
-                        var weights = modelMesh.VertexWeights[i];
-
-                        for (var j = 0; j < weights.Length; j++)
-                        {
-                            var boneId = boneIds[j];
-                            var weight = weights[j];
-
-                            if (boneId == -1)
-                                continue;
-
-                            var realBone = model.Skeleton.bones[boneId];
-                            var bone = mesh.Bones.Find(b => b.Name == realBone.name);
-
-                            if (weight > 1) throw new Exception();
-
-                            bone.VertexWeights.Add(new VertexWeight(i, weight));
-                        }
-                    }
-
-                    ascn.Meshes.Add(mesh);
-                }
-
-                foreach (var modelAnimation in model.Animations)
-                {
-                    var animation = new Assimp.Animation();
-
-                    animation.DurationInTicks = modelAnimation.duration;
-                    animation.TicksPerSecond = modelAnimation.ticksPerSecond;
-                    animation.Name = modelAnimation.name;
-
-                    foreach (var (key, nodeChannel) in modelAnimation.nodeChannels)
-                    {
-                        var channel = new NodeAnimationChannel();
-                        channel.NodeName = nodeChannel.NodeName;
-
-                        var interpolation = AnimationInterpolation.Linear;
-
-                        foreach (var nodeChannelPosition in nodeChannel.Positions)
-                            channel.PositionKeys.Add(new VectorKey(nodeChannelPosition.Time,
-                                nodeChannelPosition.value, interpolation));
-
-                        foreach (var nodeChannelRotation in nodeChannel.Rotations)
-                            channel.RotationKeys.Add(new QuaternionKey(nodeChannelRotation.Time,
-                                nodeChannelRotation.value, interpolation));
-
-                        foreach (var nodeChannelScale in nodeChannel.Scales)
-                            channel.ScalingKeys.Add(new VectorKey(nodeChannelScale.Time, nodeChannelScale.value,
-                                interpolation));
-
-
-                        animation.NodeAnimationChannels.Add(channel);
-                    }
-
-                    ascn.Animations.Add(animation);
-                }
-            }
-
-
-            {
-                var mat = new Assimp.Material();
-
-                mat.Name = "DefaultName";
-                mat.ShadingMode = ShadingMode.CookTorrance;
-
-                ascn.Materials.Add(mat);
-            }
-
-            /*
-                foreach (var modelTexture in model.Textures)
-                {
-                    var texels = new List<Texel>();
-
-                    for (var x = 0; x < modelTexture.width; x++)
-                    for (var y = 0; y < modelTexture.height; y++)
-                    {
-                        var texel = new Texel();
-
-                        for (var i = 0; i < modelTexture.channelCount; i++)
-                        {
-                            var data = modelTexture.data[
-                                (x + y * modelTexture.width) * modelTexture.channelCount + i];
-                            if (i == 0)
-                                texel.R = data;
-                            else if (i == 1)
-                                texel.G = data;
-                            else if (i == 2)
-                                texel.B = data;
-                            else if (i == 3)
-                                texel.A = data;
-                        }
-
-                        texels.Add(texel);
-                    }
-
-                    var texture = new EmbeddedTexture(modelTexture.width, modelTexture.height, texels.ToArray(),
-                        ConvertToFilePath(modelTexture.name));
-
-                    ascn.Textures.Add(texture);
-                }
-
-                string ConvertToFilePath(string t)
-                {
-                    var p = t + ".png";
-
-                    return p;
-                }
-
+                var materials = new List<Aspose.ThreeD.Shading.Material>();
                 foreach (var modelMaterial in model.Materials)
                 {
-                    var material = new Assimp.Material();
+                    var material = new PbrMaterial();
 
                     material.Name = modelMaterial.name;
-
-                    TextureSlot ConvertToTextureSlot(string p, string type)
+                    foreach (var modelMaterialTexture in modelMaterial.Textures)
                     {
-                        var textureType = TextureType.None;
-                        var fpath = ConvertToFilePath(p);
+                        var realTex = "";
 
-                        Dictionary<string, TextureType> samplerTypes = new()
+                        switch (modelMaterialTexture.Key)
                         {
-                            { "_a0", TextureType.Diffuse },
-                            { "_r0", TextureType.Roughness },
-                            { "_op0", TextureType.Opacity },
-                            { "a0", TextureType.Diffuse },
-                            { "o0", TextureType.Opacity },
-                            { "_o0", TextureType.Opacity },
-                            { "_e0", TextureType.Emissive },
-                            { "_n0", TextureType.Normals },
-                            { "_ao0", TextureType.Ambient },
-                            { "_m0", TextureType.Reflection },
-                            { "n0", TextureType.Normals }
-                            //{"sampler0", TextureType.Emissive},
-                            //{"_fm0", TextureType.Emissive},
-                        };
-
-                        if (samplerTypes.ContainsKey(type)) textureType = samplerTypes[type];
-
-                        Texture tex = null;
-                        foreach (var modelTexture in model.Textures)
-                            if (modelTexture.name == p)
-                            {
-                                tex = modelTexture;
+                            case "_a0":
+                                realTex = Aspose.ThreeD.Shading.Material.MapDiffuse;
                                 break;
-                            }
+                            default:
+                                continue;
+                        }
 
-                        if (tex != null) tex.Export(Path.GetDirectoryName(path) + "\\" + fpath);
 
-                        return new TextureSlot(fpath, textureType, 0, TextureMapping.FromUV, 0, 1, TextureOperation.Add,
-                            TextureWrapMode.Clamp, TextureWrapMode.Clamp, 0);
+                        var texture = new Aspose.ThreeD.Shading.Texture();
+                        texture.Name = modelMaterialTexture.Value;
+
+                        texture.WrapModeU = WrapMode.Mirror;
+                        texture.WrapModeV = WrapMode.Mirror;
+                        var tex = model.Textures.First(x => x.name == modelMaterialTexture.Value);
+
+                        texture.Content = tex.Export();
+
+                        material.SetTexture(realTex, texture);
                     }
 
-                    foreach (var (key, value) in modelMaterial.Textures)
-                        material.AddMaterialTexture(ConvertToTextureSlot(value, key));
+                    //material.SpecularColor = new Vector3(102) / 255;
+                    //material.DiffuseColor = new Vector3(255, 0, 0);
+                    //material.AmbientColor = new Vector3(5) / 255;
 
-                    ascn.Materials.Add(material);
+                    materials.Add(material);
                 }
-                */
 
-            ctx.ExportFile(ascn, path, format);
 
-            var startInfo = new ProcessStartInfo("\"C:\\Program Files\\Assimp\\bin\\x64\\assimp_viewer.exe\"");
+                foreach (var modelMesh in model.Meshes)
+                {
+                    var mesh = new Aspose.ThreeD.Entities.Mesh();
+                    mesh.Name = modelMesh.Name;
+                    //mesh.MaterialIndex = 0;
+                    var vertices = mesh.ControlPoints;
+
+                    var normals =
+                        mesh.CreateElement(VertexElementType.Normal, MappingMode.ControlPoint, ReferenceMode.Direct) as
+                            VertexElementNormal;
+                    var uv =
+                        mesh.CreateElement(VertexElementType.UV, MappingMode.ControlPoint, ReferenceMode.Direct) as
+                            VertexElementUV;
+
+                    for (var i = 0; i < modelMesh.Vertices.Length; i++)
+                    {
+                        vertices.Add(modelMesh.Vertices[i]);
+                        normals.Data.Add(modelMesh.Normals[i]);
+
+                        var u = modelMesh.UV0[i];
+
+                        u.Y = 1.0f - u.Y;
+
+                        uv.Data.Add(u);
+                    }
+
+                    for (var i = 0; i < modelMesh.Indices.Length; i += 3)
+                    {
+                        var i1 = modelMesh.Indices[i + 0];
+                        var i2 = modelMesh.Indices[i + 1];
+                        var i3 = modelMesh.Indices[i + 2];
+
+                        mesh.CreatePolygon(i1, i2, i3);
+                    }
+
+                    var node = new Aspose.ThreeD.Node();
+                    node.Name = mesh.Name;
+                    node.Entity = mesh;
+                    node.Material = materials[modelMesh.MaterialIndex];
+
+                    ascn.RootNode.AddChildNode(node);
+                }
+            }
+
+
+            ascn.Save(path);
+
+            var assimpViewer = "C:/Program Files/Assimp/bin/x64/assimp_viewer.exe";
+            var fbxViewer = "D:/Downloads/fbxreview.exe";
+
+            var startInfo = new ProcessStartInfo(assimpViewer);
 
             Process[] runningProcesses = Process.GetProcesses();
             foreach (var process in runningProcesses)

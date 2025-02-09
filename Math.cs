@@ -1,5 +1,6 @@
-using System.Numerics;
 using Syroot.Maths;
+using Matrix4x4 = System.Numerics.Matrix4x4;
+using Quaternion = System.Numerics.Quaternion;
 using Vector2 = System.Numerics.Vector2;
 using Vector3 = System.Numerics.Vector3;
 using Vector4 = System.Numerics.Vector4;
@@ -186,10 +187,10 @@ public partial class ModelUtility
 
         public void Write(ModelWriter writer)
         {
-            writer.Write(W);
-            writer.Write(Z);
-            writer.Write(Y);
             writer.Write(X);
+            writer.Write(Y);
+            writer.Write(Z);
+            writer.Write(W);
         }
 
         public Vec3 ToEuler()
@@ -262,10 +263,16 @@ public partial class ModelUtility
             return new Vector3(d.X, d.Y, d.Z);
         }
 
+        public static implicit operator Aspose.ThreeD.Utilities.Vector4(Vec3 d)
+        {
+            return new Aspose.ThreeD.Utilities.Vector4(d.X, d.Y, d.Z, 0);
+        }
+
         public static implicit operator Vec3(Vector3 d)
         {
             return new Vec3(d.X, d.Y, d.Z);
         }
+
 
         public void Write(ModelWriter writer)
         {
@@ -339,6 +346,11 @@ public partial class ModelUtility
         public static implicit operator Vec2(Vector2 d)
         {
             return new Vec2(d.X, d.Y);
+        }
+
+        public static implicit operator Aspose.ThreeD.Utilities.Vector4(Vec2 d)
+        {
+            return new Aspose.ThreeD.Utilities.Vector4(d.X, d.Y, 0, 0);
         }
 
         public override string ToString()

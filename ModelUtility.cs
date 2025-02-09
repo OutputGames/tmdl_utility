@@ -1,3 +1,11 @@
+//#define EXP_MDL
+
+#if !(DEBUG)
+#undef EXP_MDL
+#endif
+
+using System.Diagnostics;
+
 namespace tmdl_utility;
 
 public partial class ModelUtility
@@ -12,35 +20,29 @@ public partial class ModelUtility
             else
                 scn = AssimpImporter.LoadAssimp(info);
 
-            var export = false;
+#if !(EXP_MDL)
+            var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
 
-            if (!export)
-            {
-                var outPath = info.Dest + Path.GetFileNameWithoutExtension(info.Source) + ".tmdl";
+            outPath = Path.GetFullPath(outPath);
 
-                outPath = Path.GetFullPath(outPath);
+            var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
 
-                var outStream = new ModelWriter(new FileStream(outPath, FileMode.OpenOrCreate));
+            scn.Write(outStream);
 
-                scn.Write(outStream);
+            outStream.Close();
 
-                outStream.Close();
 
-                /*
-                var startInfo =
-                    new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\TomatoEditor\\bin\\Debug\\TomatoEditor.exe\"");
+            var startInfo =
+                new ProcessStartInfo("\"D:\\Code\\ImportantRepos\\FeatureTesting\\bin\\Debug\\FeatureTesting.exe\"");
 
-                startInfo.WorkingDirectory = "D:\\Code\\ImportantRepos\\TomatoEditor";
-                startInfo.ArgumentList.Add("Model");
-                startInfo.ArgumentList.Add($"{outPath}");
+            startInfo.WorkingDirectory = "D:\\Code\\ImportantRepos\\FeatureTesting";
+            //startInfo.ArgumentList.Add("Model");
+            startInfo.ArgumentList.Add($"{outPath}");
 
-                var proc = Process.Start(startInfo);
-                */
-            }
-            else
-            {
-                scn.Export(info.Dest + Path.GetFileNameWithoutExtension(info.Source), "fbx");
-            }
+            var proc = Process.Start(startInfo);
+#else
+            scn.Export(info.Dest + Path.GetFileNameWithoutExtension(info.Source), "glb");
+#endif
         }
     }
 }
