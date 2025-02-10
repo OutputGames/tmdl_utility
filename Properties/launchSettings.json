@@ -2,7 +2,7 @@
   "profiles": {
     "tmdl_utility": {
       "commandName": "Project",
-      "commandLineArgs": "Single \"D:\\Roms\\Splatoon2\\Model\\Npc_Judge.Nin_NX_NVN.szs\" \"out/\"",
+      "commandLineArgs": "Single \"C:\\Users\\chris\\OneDrive\\Roms\\splat3\\1.1.1\\Model\\Player00.bfres.zs\" \"out/\"",
       "workingDirectory": "D:\\Code\\ImportantRepos\\tmdl_utility"
     }
   }

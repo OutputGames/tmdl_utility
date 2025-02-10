@@ -1,9 +1,8 @@
-﻿using BfresLibrary;
-
-namespace Bfres.Structs;
+﻿namespace Bfres.Structs;
 
 public class CurveHelper
 {
+    /*
     public static AnimCurveFrameType GetFrameType(uint FrameCount)
     {
         if (FrameCount < byte.MaxValue) return AnimCurveFrameType.Byte;
@@ -254,7 +253,7 @@ public class CurveHelper
 
     public static Animation.KeyGroup CreateTrack(AnimCurve curve, bool valuesAsInts = false)
     {
-        /*
+
         Animation.KeyGroup track = new Animation.KeyGroup();
         track.AnimDataOffset = curve.AnimDataOffset;
         track.Scale = curve.Scale;
@@ -262,7 +261,7 @@ public class CurveHelper
         track.StartFrame = curve.StartFrame;
         track.EndFrame = curve.EndFrame;
         track.Delta = curve.Delta;
-        */
+
 
         var tanscale = curve.Delta;
         if (tanscale == 0)
@@ -339,4 +338,6 @@ public class CurveHelper
 
         return track;
     }
+
+    */
 }

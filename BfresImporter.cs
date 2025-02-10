@@ -14,6 +14,20 @@ namespace tmdl_utility;
 
 public class BfresImporter
 {
+    public enum TrackType
+    {
+        ScaleX = 0x4,
+        ScaleY = 0x8,
+        ScaleZ = 0xC,
+        PositionX = 0x10,
+        PositionY = 0x14,
+        PositionZ = 0x18,
+        RotationX = 0x20,
+        RotationY = 0x24,
+        RotationZ = 0x28,
+        RotationW = 0x2C
+    }
+
     public static Scene LoadBfres(UtilityInitInfo info)
     {
         var stream = new MemoryStream();
@@ -84,6 +98,9 @@ public class BfresImporter
         List<Animation> animations = new();
         foreach (var (name, anim) in resFile.SkeletalAnims)
         {
+            if (!name.StartsWith("Test") && !name.EndsWith("stance"))
+                continue;
+
             var animation = new Animation();
 
             animation.name = name;
@@ -108,7 +125,7 @@ public class BfresImporter
             {
                 ExtractAnimation(boneAnim, animation, out var channel);
 
-
+                /*
                 channel.AddPosition(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
 
                 channel.AddRotation(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
@@ -141,6 +158,7 @@ public class BfresImporter
                     channel.Scales.Clear();
                     channel.Scales.Add(new Key<Vec3>(0, new Vec3(1)));
                 }
+                */
 
                 foreach (var sceneModel in scene.models)
                 {
@@ -151,6 +169,7 @@ public class BfresImporter
                         break;
                     }
                 }
+
 
                 if (channel.Positions.Count > 0 || channel.Rotations.Count > 0 || channel.Scales.Count > 0)
                 {
@@ -529,14 +548,11 @@ public class BfresImporter
         channel = new Animation.NodeChannel();
         channel.NodeName = boneAnim.Name;
 
-        basePos = new Vec3(boneAnim.BaseData.Translate);
-        baseRot = new Vec4(boneAnim.BaseData.Rotate);
-        baseScl = new Vec3(boneAnim.BaseData.Scale);
-
         channel.AddPosition(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
         channel.AddRotation(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
         channel.AddScale(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Scale)));
 
+        /*
         // refactor --
         if (boneAnim.Curves.Count > 0)
         {
@@ -546,115 +562,45 @@ public class BfresImporter
 
                 var scale = curve.Scale;
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.TranslateX))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "PositionX", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec3> posKey = new(frame.Key,
-                            new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
-                        channel.AddPosition(posKey);
-                    }
-                }
+                var trackType = (TrackType)curve.AnimDataOffset;
+                var trackTypeString = trackType.ToString();
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.TranslateY))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "PositionY", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec3> posKey = new(frame.Key,
-                            new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
-                        channel.AddPosition(posKey);
-                    }
-                }
+                var index = 0;
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.TranslateZ))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "PositionZ", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec3> posKey = new(frame.Key,
-                            new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
-                        channel.AddPosition(posKey);
-                    }
-                }
+                if (trackTypeString.EndsWith("X"))
+                    index = 0;
+                else if (trackTypeString.EndsWith("Y"))
+                    index = 1;
+                else if (trackTypeString.EndsWith("Z"))
+                    index = 2;
+                else if (trackTypeString.EndsWith("W"))
+                    index = 3;
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateX))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "RotationX", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec4> rotKey = new(frame.Key,
-                            new Vec4(((HermiteKey)frame.Value).Value, 0, 0, 1));
-                        channel.AddRotation(rotKey);
-                    }
-                }
+                var helper = CurveAnimHelper.FromCurve(curve, trackTypeString, false);
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateY))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "RotationY", false);
+                if (trackTypeString.StartsWith("Rotation"))
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new(frame.Key,
-                            new Vec4(0, ((HermiteKey)frame.Value).Value, 0, 1));
-                        channel.AddRotation(rotKey);
-                    }
-                }
+                        var value = new Vec4();
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateZ))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "RotationZ", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec4> rotKey = new(frame.Key,
-                            new Vec4(0, 0, ((HermiteKey)frame.Value).Value, 1));
-                        channel.AddRotation(rotKey);
-                    }
-                }
+                        value[index] = ((HermiteKey)frame.Value).Value;
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.RotateW))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "RotationW", false);
+                        Key<Vec4> posKey = new(frame.Key, value);
+                        channel.AddRotation(posKey);
+                    }
+                else
                     foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
                     {
-                        Key<Vec4> rotKey = new(frame.Key,
-                            new Vec4(0, 0, 0, ((HermiteKey)frame.Value).Value));
-                        channel.AddRotation(rotKey);
-                    }
-                }
+                        var value = new Vec3();
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.ScaleX))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "ScaleX", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec3> scaleKey = new(frame.Key,
-                            new Vec3(((HermiteKey)frame.Value).Value, 0, 0));
-                        channel.AddScale(scaleKey);
-                    }
-                }
+                        value[index] = ((HermiteKey)frame.Value).Value;
 
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.ScaleY))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "ScaleY", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec3> scaleKey = new(frame.Key,
-                            new Vec3(0, ((HermiteKey)frame.Value).Value, 0));
-                        channel.AddScale(scaleKey);
+                        Key<Vec3> posKey = new(frame.Key, value);
+                        if (trackTypeString.StartsWith("Position"))
+                            channel.AddPosition(posKey);
+                        else
+                            channel.AddScale(posKey);
                     }
-                }
-
-                if (boneAnim.FlagsCurve.HasFlag(BoneAnimFlagsCurve.ScaleZ))
-                {
-                    var helper = CurveAnimHelper.FromCurve(curve, "ScaleZ", false);
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
-                    {
-                        Key<Vec3> scaleKey = new(frame.Key,
-                            new Vec3(0, 0, ((HermiteKey)frame.Value).Value));
-                        channel.AddScale(scaleKey);
-                    }
-                }
             }
 
             // Sort keys by time
@@ -662,6 +608,7 @@ public class BfresImporter
             channel.Rotations.Sort((a, b) => a.Time.CompareTo(b.Time));
             channel.Scales.Sort((a, b) => a.Time.CompareTo(b.Time));
         }
+        */
     }
 
     public static Vec4[] ReadVertexBuffer(VertexBuffer vtx, string name, ByteOrder order)
@@ -736,5 +683,10 @@ public class BfresImporter
 
         displayFaceSize = f.Count;
         return f;
+    }
+
+
+    public class KeyGroup
+    {
     }
 }

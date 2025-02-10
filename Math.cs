@@ -258,6 +258,39 @@ public partial class ModelUtility
 
         public float Magnitude => MathF.Sqrt(MathF.Pow(X, 2) + MathF.Pow(Y, 2) + MathF.Pow(Z, 2));
 
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return X;
+                    case 1:
+                        return Y;
+                    case 2:
+                        return Z;
+                }
+
+                return -1;
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        X = (float)value;
+                        break;
+                    case 1:
+                        Y = (float)value;
+                        break;
+                    case 2:
+                        Z = (float)value;
+                        break;
+                }
+            }
+        }
+
         public static implicit operator Vector3(Vec3 d)
         {
             return new Vector3(d.X, d.Y, d.Z);
