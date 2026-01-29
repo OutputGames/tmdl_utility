@@ -3,3 +3,6 @@
 /bin
 /obj
 /out
+*.user
+*.lnk
+*.DotSettings.user

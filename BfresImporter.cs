@@ -277,28 +277,10 @@ public class BfresImporter
             List<int[]> bids = new();
             foreach (var vec4 in id0)
             {
-                //vec4.X -= 1;
-                //vec4.Y -= 1;
-                //vec4.Z -= 1;
-                //vec4.W -= 1;
                 int[] bid = { -1, -1, -1, -1 };
 
                 for (var i = 0; i < shape.VertexSkinCount; i++)
                 {
-                    var preId = (int)vec4[i] - 1;
-
-                    if (preId < 0)
-                        continue;
-
-                    var bone = resfileModel.Skeleton.BoneList[preId];
-
-                    var newId = boneDict.Keys.ToList().IndexOf(bone);
-                    var newBone = resfileModel.Skeleton.BoneList[newId];
-
-
-                    if (preId != newId)
-                        Console.WriteLine($"Converted boneIds: {bone.Name} : {newBone.Name}");
-
                     bid[i] = (int)vec4[i];
                 }
 
@@ -310,23 +292,24 @@ public class BfresImporter
                 for (var j = 0; j < bids.Count; j++)
                 {
                     var b = bids[j];
-                    var ogb = bids[j];
                     for (var i = 0; i < shape.VertexSkinCount; i++)
                     {
                         var k = b[i];
                         if (k < 0) continue;
-                        var boneIndices = 0;
-                        boneIndices = resfileModel.Skeleton.MatrixToBoneList[k];
+                        
+                        // Convert smooth matrix index to bone index
+                        int boneIndex = resfileModel.Skeleton.MatrixToBoneList[k];
 
-                        var bone = resfileModel.Skeleton.Bones[boneIndices];
-                        var ogBone = resfileModel.Skeleton.Bones[k];
+                        // If weight is zero, don't use this bone
+                        if (w0[j][i] <= float.Epsilon) 
+                            boneIndex = -1;
 
-                        if (w0[j][i] <= float.Epsilon) boneIndices = -1;
-
-                        b[i] = boneIndices;
+                        b[i] = boneIndex;
                     }
 
-                    for (int i = shape.VertexSkinCount; i < 4; i++) b[i] = -1;
+                    // Clear unused bone slots
+                    for (int i = shape.VertexSkinCount; i < 4; i++) 
+                        b[i] = -1;
 
                     bids[j] = b;
                 }
@@ -334,7 +317,14 @@ public class BfresImporter
                 for (var j = 0; j < bids.Count; j++)
                 {
                     var b = bids[j];
-                    for (var i = 0; i < b.Length; i++) b[i] = 0;
+                    // For rigid skinning, use the first bone in SkinBoneIndices
+                    if (shape.SkinBoneIndices.Count > 0)
+                        b[0] = shape.SkinBoneIndices[0];
+                    else
+                        b[0] = 0;
+                    
+                    for (var i = 1; i < b.Length; i++) 
+                        b[i] = -1;
 
                     bids[j] = b;
                 }
@@ -355,7 +345,27 @@ public class BfresImporter
             List<float[]> wghts = new();
             foreach (var vec4 in w0)
             {
-                for (int i = shape.VertexSkinCount; i < 4; i++) vec4[i] = 0;
+                // Clear unused weights
+                for (int i = shape.VertexSkinCount; i < 4; i++) 
+                    vec4[i] = 0;
+
+                // Normalize weights to sum to 1.0
+                float totalWeight = 0;
+                for (int i = 0; i < 4; i++)
+                    totalWeight += vec4[i];
+                
+                if (totalWeight > 0.0001f)
+                {
+                    for (int i = 0; i < 4; i++)
+                        vec4[i] /= totalWeight;
+                }
+                else
+                {
+                    // If no weights, assign 1.0 to first bone
+                    vec4[0] = 1.0f;
+                    for (int i = 1; i < 4; i++)
+                        vec4[i] = 0;
+                }
 
                 wghts.Add(vec4.ToFltArray());
             }
@@ -548,19 +558,17 @@ public class BfresImporter
         channel = new Animation.NodeChannel();
         channel.NodeName = boneAnim.Name;
 
+        // Set base data as default keyframes at frame 0
         channel.AddPosition(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
         channel.AddRotation(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
         channel.AddScale(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Scale)));
 
-        /*
-        // refactor --
+        // Extract animation curves
         if (boneAnim.Curves.Count > 0)
         {
             for (var i1 = 0; i1 < boneAnim.Curves.Count; i1++)
             {
                 var curve = boneAnim.Curves[i1];
-
-                var scale = curve.Scale;
 
                 var trackType = (TrackType)curve.AnimDataOffset;
                 var trackTypeString = trackType.ToString();
@@ -576,31 +584,34 @@ public class BfresImporter
                 else if (trackTypeString.EndsWith("W"))
                     index = 3;
 
-                var helper = CurveAnimHelper.FromCurve(curve, trackTypeString, false);
+                // Extract curve keyframes
+                for (int frameIdx = 0; frameIdx < curve.Frames.Length; frameIdx++)
+                {
+                    float frame = curve.Frames[frameIdx];
+                    float value = curve.Keys[frameIdx, 0] * curve.Scale + curve.Offset;
 
-                if (trackTypeString.StartsWith("Rotation"))
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                    if (trackTypeString.StartsWith("Rotation"))
                     {
-                        var value = new Vec4();
-
-                        value[index] = ((HermiteKey)frame.Value).Value;
-
-                        Key<Vec4> posKey = new(frame.Key, value);
-                        channel.AddRotation(posKey);
+                        var rotValue = new Vec4();
+                        rotValue[index] = value;
+                        Key<Vec4> rotKey = new Key<Vec4>(frame, rotValue);
+                        channel.AddRotation(rotKey);
                     }
-                else
-                    foreach (KeyValuePair<float, object> frame in helper.KeyFrames)
+                    else if (trackTypeString.StartsWith("Position"))
                     {
-                        var value = new Vec3();
-
-                        value[index] = ((HermiteKey)frame.Value).Value;
-
-                        Key<Vec3> posKey = new(frame.Key, value);
-                        if (trackTypeString.StartsWith("Position"))
-                            channel.AddPosition(posKey);
-                        else
-                            channel.AddScale(posKey);
+                        var posValue = new Vec3();
+                        posValue[index] = value;
+                        Key<Vec3> posKey = new Key<Vec3>(frame, posValue);
+                        channel.AddPosition(posKey);
                     }
+                    else if (trackTypeString.StartsWith("Scale"))
+                    {
+                        var scaleValue = new Vec3();
+                        scaleValue[index] = value;
+                        Key<Vec3> scaleKey = new Key<Vec3>(frame, scaleValue);
+                        channel.AddScale(scaleKey);
+                    }
+                }
             }
 
             // Sort keys by time
@@ -608,7 +619,6 @@ public class BfresImporter
             channel.Rotations.Sort((a, b) => a.Time.CompareTo(b.Time));
             channel.Scales.Sort((a, b) => a.Time.CompareTo(b.Time));
         }
-        */
     }
 
     public static Vec4[] ReadVertexBuffer(VertexBuffer vtx, string name, ByteOrder order)
