@@ -84,7 +84,7 @@ public class BfresImporter
                 var mdlMesh = mdl.Meshes[i];
 
                 var meshNode = new Node(mdlMesh.Name);
-                meshNode.Meshes.Add(i);
+                meshNode.Meshes.Add(i);  // <- This is the key line!
                 meshNode.SetParent(node);
             }
 
@@ -103,6 +103,8 @@ public class BfresImporter
             animation.name = name;
             animation.ticksPerSecond = 30;
             animation.duration = anim.FrameCount;
+
+            Console.WriteLine(name);
 
             var jk = 0;
             foreach (var resFileModel in resFile.Models)

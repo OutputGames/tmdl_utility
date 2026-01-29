@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Aspose.ThreeD.Entities;
 using Aspose.ThreeD.Shading;
+using Aspose.ThreeD.Utilities;
 using Matrix4x4 = System.Numerics.Matrix4x4;
 
 namespace tmdl_utility;
@@ -173,6 +174,8 @@ public partial class ModelUtility
         {
             path += "." + format;
 
+            Console.WriteLine("Exporting to "+path);
+
             // Check if any models have animations - if so, use Assimp for complete export
             bool hasAnimations = models.Any(m => m.Animations != null && m.Animations.Length > 0);
 
@@ -255,13 +258,13 @@ public partial class ModelUtility
                     for (var i = 0; i < modelMesh.Vertices.Length; i++)
                     {
                         vertices.Add(modelMesh.Vertices[i]);
-                        normals.Data.Add(modelMesh.Normals[i]);
+                        normals.Data.Add(new FVector4(modelMesh.Normals[i]));
 
                         var u = modelMesh.UV0[i];
 
                         u.Y = 1.0f - u.Y;
 
-                        uv.Data.Add(u);
+                        uv.Data.Add(new FVector4(u));
                     }
 
                     for (var i = 0; i < modelMesh.Indices.Length; i += 3)
@@ -319,11 +322,35 @@ public partial class ModelUtility
 
             // Convert root node to Assimp format
             aiScene.RootNode = rootNode.ToAiNode();
+            int materialOffset = 0; // Track material offset for each model
+
 
             // Export all models
             foreach (var model in models)
             {
-                // Add meshes to the scene
+
+
+                // Add materials
+                int currentModelMaterialCount = 0;
+
+                if (model.Materials != null)
+                {
+                    foreach (var modelMaterial in model.Materials)
+                    {
+                        var aiMaterial = new Assimp.Material();
+                        aiMaterial.Name = modelMaterial.name;
+                        
+                        // Add required properties for GLTF2 export
+                        aiMaterial.ColorDiffuse = new System.Numerics.Vector4(1,1,1,1);
+                        aiMaterial.ColorSpecular = new System.Numerics.Vector4(0.5f, 0.5f, 0.5f, 1f);
+                        aiMaterial.Shininess = 32.0f;
+                        
+                        aiScene.Materials.Add(aiMaterial);
+                        currentModelMaterialCount++;
+                    }
+                }
+
+                // Add meshes to the scene with adjusted material indices
                 if (model.Meshes != null)
                 {
                     foreach (var modelMesh in model.Meshes)
@@ -373,27 +400,23 @@ public partial class ModelUtility
                             }
                         }
 
-                        // Validate and set material index
+                        // Adjust material index by adding the material offset
                         if (model.Materials != null && modelMesh.MaterialIndex >= 0 && 
                             modelMesh.MaterialIndex < model.Materials.Length)
                         {
-                            aiMesh.MaterialIndex = modelMesh.MaterialIndex;
+                            aiMesh.MaterialIndex = materialOffset + modelMesh.MaterialIndex;
+                        }
+                        else
+                        {
+                            aiMesh.MaterialIndex = 0; // Default to first material if invalid
                         }
                         
                         aiScene.Meshes.Add(aiMesh);
                     }
                 }
 
-                // Add materials
-                if (model.Materials != null)
-                {
-                    foreach (var modelMaterial in model.Materials)
-                    {
-                        var aiMaterial = new Assimp.Material();
-                        aiMaterial.Name = modelMaterial.name;
-                        aiScene.Materials.Add(aiMaterial);
-                    }
-                }
+                // Update material offset for next model
+                materialOffset += currentModelMaterialCount;
 
                 // Convert animations to Assimp format
                 if (model.Animations != null)
@@ -443,13 +466,24 @@ public partial class ModelUtility
                 }
             }
 
+            // Ensure at least one default material exists
+            if (aiScene.Materials.Count == 0)
+            {
+                var defaultMaterial = new Assimp.Material();
+                defaultMaterial.Name = "DefaultMaterial";
+                defaultMaterial.ColorDiffuse = new System.Numerics.Vector4(0.8f, 0.8f, 0.8f, 1.0f);
+                aiScene.Materials.Add(defaultMaterial);
+            }
+
             // Export using Assimp exporter
             var exporter = new Assimp.AssimpContext();
             try
             {
-                exporter.ExportFile(aiScene, path, format);
-                var totalAnimations = models.Sum(m => m.Animations?.Length ?? 0);
-                Console.WriteLine($"Successfully exported scene with {totalAnimations} animation(s) to {path}");
+                if (exporter.ExportFile(aiScene, path, "gltf2"))
+                {
+                    var totalAnimations = models.Sum(m => m.Animations?.Length ?? 0);
+                    Console.WriteLine($"Successfully exported scene with {totalAnimations} animation(s) to {path}");
+                }
             }
             catch (Exception ex)
             {

@@ -13,18 +13,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspose.3D" Version="25.1.0" />
-    <PackageReference Include="AssimpNetter" Version="5.4.3.3" />
+    <PackageReference Include="Aspose.3D" Version="26.1.0" />
+    <PackageReference Include="AssimpNetter" Version="6.0.2.1" />
     <PackageReference Include="CsYaz0" Version="1.0.2" />
     <PackageReference Include="DirectXTexNet" Version="1.0.7" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OatmealDome.BinaryData" Version="1.0.0" />
-    <PackageReference Include="SarcLibrary" Version="3.2.0" />
+    <PackageReference Include="SarcLibrary" Version="3.3.4" />
     <PackageReference Include="StbiSharp" Version="1.2.1" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.2" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
-    <PackageReference Include="ZstdSharp.Port" Version="0.8.4" />
+    <PackageReference Include="System.Text.Json" Version="10.0.2" />
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.7" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,6 +40,10 @@
     <Reference Include="Syroot.NintenTools.NSW.Bntx">
       <HintPath>..\..\GithubRepos\BfresL\BfresLibrary\bin\Release\net48\Syroot.NintenTools.NSW.Bntx.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="out\" />
   </ItemGroup>
 
 </Project>
