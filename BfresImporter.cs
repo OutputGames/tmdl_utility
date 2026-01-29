@@ -98,9 +98,6 @@ public class BfresImporter
         List<Animation> animations = new();
         foreach (var (name, anim) in resFile.SkeletalAnims)
         {
-            if (!name.StartsWith("Test") && !name.EndsWith("stance"))
-                continue;
-
             var animation = new Animation();
 
             animation.name = name;
@@ -124,12 +121,6 @@ public class BfresImporter
             foreach (var boneAnim in anim.BoneAnims)
             {
                 ExtractAnimation(boneAnim, animation, out var channel);
-
-                
-                channel.AddPosition(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
-
-                channel.AddRotation(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
-                channel.AddScale(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Scale)));
 
                 if (boneAnim.ApplyScaleOne)
                 {
