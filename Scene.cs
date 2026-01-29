@@ -173,6 +173,27 @@ public partial class ModelUtility
         {
             path += "." + format;
 
+            // Check if any models have animations - if so, use Assimp for complete export
+            bool hasAnimations = models.Any(m => m.Animations != null && m.Animations.Length > 0);
+
+            if (hasAnimations)
+            {
+                // Export everything (meshes, materials, and animations) using Assimp
+                ExportCompleteSceneWithAssimp(path, format);
+                
+                // Still need to start viewer for compatibility with existing workflow
+                StartViewer(path);
+            }
+            else
+            {
+                // No animations - use original Aspose export
+                ExportWithAspose(path);
+                StartViewer(path);
+            }
+        }
+
+        private void ExportWithAspose(string path)
+        {
             var ascn = new Aspose.ThreeD.Scene();
 
             foreach (var model in models)
@@ -263,7 +284,10 @@ public partial class ModelUtility
 
 
             ascn.Save(path);
+        }
 
+        private void StartViewer(string path)
+        {
             var assimpViewer = "C:/Program Files/Assimp/bin/x64/assimp_viewer.exe";
             var fbxViewer = "D:/Downloads/fbxreview.exe";
 
@@ -280,6 +304,158 @@ public partial class ModelUtility
             startInfo.ArgumentList.Add($"{path}");
 
             var proc = Process.Start(startInfo);
+        }
+
+        /// <summary>
+        /// Exports the complete scene including meshes, materials, node hierarchy, and animations using AssimpNet.
+        /// This method is used when animations are present to ensure they are properly exported.
+        /// </summary>
+        /// <param name="path">The output file path (including extension)</param>
+        /// <param name="format">The output format (e.g., "glb", "fbx", "dae")</param>
+        private void ExportCompleteSceneWithAssimp(string path, string format)
+        {
+            // Create a new Assimp scene for export with complete model data
+            var aiScene = new Assimp.Scene();
+
+            // Convert root node to Assimp format
+            aiScene.RootNode = rootNode.ToAiNode();
+
+            // Export all models
+            foreach (var model in models)
+            {
+                // Add meshes to the scene
+                if (model.Meshes != null)
+                {
+                    foreach (var modelMesh in model.Meshes)
+                    {
+                        if (modelMesh.Vertices == null || modelMesh.Normals == null || 
+                            modelMesh.UV0 == null || modelMesh.Indices == null)
+                            continue;
+
+                        var aiMesh = new Assimp.Mesh();
+                        aiMesh.Name = modelMesh.Name;
+
+                        // Add vertices
+                        for (var i = 0; i < modelMesh.Vertices.Length; i++)
+                        {
+                            aiMesh.Vertices.Add(new System.Numerics.Vector3(
+                                modelMesh.Vertices[i].X, 
+                                modelMesh.Vertices[i].Y, 
+                                modelMesh.Vertices[i].Z));
+                            
+                            if (i < modelMesh.Normals.Length)
+                            {
+                                aiMesh.Normals.Add(new System.Numerics.Vector3(
+                                    modelMesh.Normals[i].X, 
+                                    modelMesh.Normals[i].Y, 
+                                    modelMesh.Normals[i].Z));
+                            }
+                            
+                            if (i < modelMesh.UV0.Length)
+                            {
+                                aiMesh.TextureCoordinateChannels[0].Add(new System.Numerics.Vector3(
+                                    modelMesh.UV0[i].X, 
+                                    1.0f - modelMesh.UV0[i].Y,  // Flip Y coordinate
+                                    0));
+                            }
+                        }
+
+                        // Add faces - validate indices array length
+                        if (modelMesh.Indices.Length % 3 == 0)
+                        {
+                            for (var i = 0; i < modelMesh.Indices.Length; i += 3)
+                            {
+                                var face = new Assimp.Face();
+                                face.Indices.Add(modelMesh.Indices[i + 0]);
+                                face.Indices.Add(modelMesh.Indices[i + 1]);
+                                face.Indices.Add(modelMesh.Indices[i + 2]);
+                                aiMesh.Faces.Add(face);
+                            }
+                        }
+
+                        // Validate and set material index
+                        if (model.Materials != null && modelMesh.MaterialIndex >= 0 && 
+                            modelMesh.MaterialIndex < model.Materials.Length)
+                        {
+                            aiMesh.MaterialIndex = modelMesh.MaterialIndex;
+                        }
+                        
+                        aiScene.Meshes.Add(aiMesh);
+                    }
+                }
+
+                // Add materials
+                if (model.Materials != null)
+                {
+                    foreach (var modelMaterial in model.Materials)
+                    {
+                        var aiMaterial = new Assimp.Material();
+                        aiMaterial.Name = modelMaterial.name;
+                        aiScene.Materials.Add(aiMaterial);
+                    }
+                }
+
+                // Convert animations to Assimp format
+                if (model.Animations != null)
+                {
+                    foreach (var modelAnimation in model.Animations)
+                    {
+                        var aiAnimation = new Assimp.Animation();
+                        aiAnimation.Name = modelAnimation.name;
+                        aiAnimation.DurationInTicks = modelAnimation.duration;
+                        aiAnimation.TicksPerSecond = modelAnimation.ticksPerSecond;
+
+                        // Add node animation channels
+                        foreach (var (nodeName, channel) in modelAnimation.nodeChannels)
+                        {
+                            var aiChannel = new Assimp.NodeAnimationChannel();
+                            aiChannel.NodeName = nodeName;
+
+                            // Add position keys
+                            foreach (var posKey in channel.Positions)
+                            {
+                                aiChannel.PositionKeys.Add(new Assimp.VectorKey(
+                                    posKey.timeStamp,
+                                    new System.Numerics.Vector3(posKey.value.X, posKey.value.Y, posKey.value.Z)));
+                            }
+
+                            // Add rotation keys
+                            foreach (var rotKey in channel.Rotations)
+                            {
+                                aiChannel.RotationKeys.Add(new Assimp.QuaternionKey(
+                                    rotKey.timeStamp,
+                                    new System.Numerics.Quaternion(rotKey.value.X, rotKey.value.Y, rotKey.value.Z, rotKey.value.W)));
+                            }
+
+                            // Add scale keys
+                            foreach (var scaleKey in channel.Scales)
+                            {
+                                aiChannel.ScalingKeys.Add(new Assimp.VectorKey(
+                                    scaleKey.timeStamp,
+                                    new System.Numerics.Vector3(scaleKey.value.X, scaleKey.value.Y, scaleKey.value.Z)));
+                            }
+
+                            aiAnimation.NodeAnimationChannels.Add(aiChannel);
+                        }
+
+                        aiScene.Animations.Add(aiAnimation);
+                    }
+                }
+            }
+
+            // Export using Assimp exporter
+            var exporter = new Assimp.AssimpContext();
+            try
+            {
+                exporter.ExportFile(aiScene, path, format);
+                var totalAnimations = models.Sum(m => m.Animations?.Length ?? 0);
+                Console.WriteLine($"Successfully exported scene with {totalAnimations} animation(s) to {path}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: Failed to export scene with animations: {ex.Message}");
+                throw; // Re-throw to let caller handle the error
+            }
         }
 
 
