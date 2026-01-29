@@ -176,7 +176,9 @@ public partial class ModelUtility
 
             Console.WriteLine("Exporting to "+path);
 
-            // Use Aspose.3D for all exports (more reliable than AssimpNet)
+            // Use Aspose.3D for all exports to avoid AssimpNet memory corruption issues
+            // Previous implementation used AssimpNet.ExportFile which caused 
+            // "Attempted to read or write protected memory" errors due to P/Invoke marshalling problems
             // Aspose.3D supports GLTF, FBX, DAE, and many other formats with animations
             ExportWithAspose(path);
             
