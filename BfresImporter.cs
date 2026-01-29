@@ -125,7 +125,7 @@ public class BfresImporter
             {
                 ExtractAnimation(boneAnim, animation, out var channel);
 
-                /*
+                
                 channel.AddPosition(new Key<Vec3>(0, new Vec3(boneAnim.BaseData.Translate)));
 
                 channel.AddRotation(new Key<Vec4>(0, new Vec4(boneAnim.BaseData.Rotate)));
@@ -158,7 +158,7 @@ public class BfresImporter
                     channel.Scales.Clear();
                     channel.Scales.Add(new Key<Vec3>(0, new Vec3(1)));
                 }
-                */
+                
 
                 foreach (var sceneModel in scene.models)
                 {
