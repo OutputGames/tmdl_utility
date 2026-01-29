@@ -284,38 +284,32 @@ public partial class ModelUtility
                     {
                         try
                         {
-                            var asposeAnim = new Aspose.ThreeD.Animation.AnimationClip(animation.name);
+                            // Log animation channel data for diagnostic purposes
+                            // Note: Full animation export via Aspose.3D would require:
+                            // 1. Building proper node hierarchy that matches animation targets
+                            // 2. Creating Aspose.ThreeD.Animation.CurveMapping for each channel
+                            // 3. Setting up keyframe data on the appropriate curves
+                            // This is complex and format-dependent, requiring significant refactoring
                             
-                            // Add animation channels for each node
                             foreach (var (nodeName, channel) in animation.nodeChannels)
                             {
-                                // Create animation node with proper curve bindings
-                                // Note: Aspose.3D animation API may need node references from the scene
-                                // For now, log that animations are being exported
-                                // Full implementation would require mapping nodeChannels to Aspose scene nodes
                                 Console.WriteLine($"  Animation channel: {nodeName} - " +
                                     $"Positions: {channel.Positions.Count}, " +
                                     $"Rotations: {channel.Rotations.Count}, " +
                                     $"Scales: {channel.Scales.Count}");
                             }
                             
-                            // Note: Full animation export via Aspose.3D would require:
-                            // 1. Building the proper node hierarchy in ascn that matches animation targets
-                            // 2. Creating Aspose.ThreeD.Animation.CurveMapping for each channel
-                            // 3. Setting up keyframe data on the appropriate curves
-                            // This is complex and may require significant refactoring
-                            
-                            Console.WriteLine($"  Animation '{animation.name}' metadata exported " +
+                            Console.WriteLine($"  Animation '{animation.name}' metadata logged " +
                                 $"(duration: {animation.duration}, fps: {animation.ticksPerSecond})");
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Warning: Could not fully export animation '{animation.name}': {ex.Message}");
+                            Console.WriteLine($"Warning: Could not process animation '{animation.name}': {ex.Message}");
                         }
                     }
                     
-                    Console.WriteLine("Note: Animation export via Aspose.3D may have limitations. " +
-                        "For best results with animations, consider using FBX format.");
+                    Console.WriteLine("Note: Animation export via Aspose.3D is limited. " +
+                        "For best results with animations, use FBX format which has better animation support.");
                 }
             }
 

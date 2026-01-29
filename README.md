@@ -21,7 +21,10 @@ The tool uses **Aspose.3D** for exporting to various formats:
 ## Animation Support
 
 - **Import**: Full support for importing animations from BFRES files
-- **Export**: Basic animation data logging. For production use with animations, FBX format is recommended as it has the best animation support in Aspose.3D. Full keyframe animation export is complex and may require additional implementation depending on your target format.
+- **Export**: Basic animation data logging.
+  - Animation metadata and channel information is preserved and logged during export
+  - For production use with animations, FBX format is recommended as it has the best animation support in Aspose.3D
+  - Full keyframe animation export is complex and format-dependent, requiring additional implementation
 
 ## Recent Changes
 
@@ -43,4 +46,3 @@ tmdl_utility Single "test/pigeon.zs" "output/"
 ```
 
 The output format is determined by the EXP_MDL define and the file extension in the code.
- 
