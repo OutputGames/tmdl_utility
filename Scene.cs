@@ -269,6 +269,7 @@ public partial class ModelUtility
             {
                 if (model.Animations != null && model.Animations.Length > 0)
                 {
+                    Console.WriteLine($"Exporting {model.Animations.Length} animation(s) to {path}");
                     ExportAnimationsWithAssimp(path, model, format);
                     break; // Only export first model's animations for now
                 }
@@ -294,11 +295,58 @@ public partial class ModelUtility
 
         private void ExportAnimationsWithAssimp(string path, Model model, string format)
         {
-            // Create a new Assimp scene for export
+            // Create a new Assimp scene for export with complete model data
             var aiScene = new Assimp.Scene();
 
             // Convert root node to Assimp format
             aiScene.RootNode = rootNode.ToAiNode();
+
+            // Add meshes to the scene
+            foreach (var modelMesh in model.Meshes)
+            {
+                var aiMesh = new Assimp.Mesh();
+                aiMesh.Name = modelMesh.Name;
+
+                // Add vertices
+                for (var i = 0; i < modelMesh.Vertices.Length; i++)
+                {
+                    aiMesh.Vertices.Add(new System.Numerics.Vector3(
+                        modelMesh.Vertices[i].X, 
+                        modelMesh.Vertices[i].Y, 
+                        modelMesh.Vertices[i].Z));
+                    
+                    aiMesh.Normals.Add(new System.Numerics.Vector3(
+                        modelMesh.Normals[i].X, 
+                        modelMesh.Normals[i].Y, 
+                        modelMesh.Normals[i].Z));
+                    
+                    aiMesh.TextureCoordinateChannels[0].Add(new System.Numerics.Vector3(
+                        modelMesh.UV0[i].X, 
+                        1.0f - modelMesh.UV0[i].Y,  // Flip Y coordinate
+                        0));
+                }
+
+                // Add faces
+                for (var i = 0; i < modelMesh.Indices.Length; i += 3)
+                {
+                    var face = new Assimp.Face();
+                    face.Indices.Add(modelMesh.Indices[i + 0]);
+                    face.Indices.Add(modelMesh.Indices[i + 1]);
+                    face.Indices.Add(modelMesh.Indices[i + 2]);
+                    aiMesh.Faces.Add(face);
+                }
+
+                aiMesh.MaterialIndex = modelMesh.MaterialIndex;
+                aiScene.Meshes.Add(aiMesh);
+            }
+
+            // Add materials
+            foreach (var modelMaterial in model.Materials)
+            {
+                var aiMaterial = new Assimp.Material();
+                aiMaterial.Name = modelMaterial.name;
+                aiScene.Materials.Add(aiMaterial);
+            }
 
             // Convert animations to Assimp format
             foreach (var modelAnimation in model.Animations)
@@ -344,10 +392,18 @@ public partial class ModelUtility
                 aiScene.Animations.Add(aiAnimation);
             }
 
-            // Export using Assimp exporter
+            // Export using Assimp exporter - overwrite the original file with animations included
             var exporter = new Assimp.AssimpContext();
-            var animPath = Path.ChangeExtension(path, null) + "_anim." + format;
-            exporter.ExportFile(aiScene, animPath, format);
+            try
+            {
+                exporter.ExportFile(aiScene, path, format);
+                Console.WriteLine($"Successfully exported {model.Animations.Length} animation(s) to {path}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not export animations with Assimp: {ex.Message}");
+                // Aspose export already saved the mesh data, so we just log the warning
+            }
         }
 
 
