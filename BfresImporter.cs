@@ -557,6 +557,11 @@ public class BfresImporter
         // Extract animation curves
         if (boneAnim.Curves.Count > 0)
         {
+            // Group curves by frame to properly combine components
+            Dictionary<float, Vec3> positionsByFrame = new Dictionary<float, Vec3>();
+            Dictionary<float, Vec4> rotationsByFrame = new Dictionary<float, Vec4>();
+            Dictionary<float, Vec3> scalesByFrame = new Dictionary<float, Vec3>();
+
             for (var i1 = 0; i1 < boneAnim.Curves.Count; i1++)
             {
                 var curve = boneAnim.Curves[i1];
@@ -583,26 +588,39 @@ public class BfresImporter
 
                     if (trackTypeString.StartsWith("Rotation"))
                     {
-                        var rotValue = new Vec4();
-                        rotValue[index] = value;
-                        Key<Vec4> rotKey = new Key<Vec4>(frame, rotValue);
-                        channel.AddRotation(rotKey);
+                        if (!rotationsByFrame.ContainsKey(frame))
+                            rotationsByFrame[frame] = new Vec4(boneAnim.BaseData.Rotate);
+                        rotationsByFrame[frame][index] = value;
                     }
                     else if (trackTypeString.StartsWith("Position"))
                     {
-                        var posValue = new Vec3();
-                        posValue[index] = value;
-                        Key<Vec3> posKey = new Key<Vec3>(frame, posValue);
-                        channel.AddPosition(posKey);
+                        if (!positionsByFrame.ContainsKey(frame))
+                            positionsByFrame[frame] = new Vec3(boneAnim.BaseData.Translate);
+                        positionsByFrame[frame][index] = value;
                     }
                     else if (trackTypeString.StartsWith("Scale"))
                     {
-                        var scaleValue = new Vec3();
-                        scaleValue[index] = value;
-                        Key<Vec3> scaleKey = new Key<Vec3>(frame, scaleValue);
-                        channel.AddScale(scaleKey);
+                        if (!scalesByFrame.ContainsKey(frame))
+                            scalesByFrame[frame] = new Vec3(boneAnim.BaseData.Scale);
+                        scalesByFrame[frame][index] = value;
                     }
                 }
+            }
+
+            // Convert grouped frames to keyframes
+            foreach (var (frame, position) in positionsByFrame)
+            {
+                channel.Positions.Add(new Key<Vec3>(frame, position));
+            }
+
+            foreach (var (frame, rotation) in rotationsByFrame)
+            {
+                channel.Rotations.Add(new Key<Vec4>(frame, rotation));
+            }
+
+            foreach (var (frame, scale) in scalesByFrame)
+            {
+                channel.Scales.Add(new Key<Vec3>(frame, scale));
             }
 
             // Sort keys by time
